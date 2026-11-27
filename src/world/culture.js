@@ -1,12 +1,14 @@
 import * as THREE from 'three';
-import { makeArt, makeTexture, drawFlame, drawNepaliFlag } from './art.js';
+import { makeArt, makeTexture, drawFlame, drawNepaliFlag, drawWindhorseFlag } from './art.js';
 
 export const CULTURE = {
   lungtaCount: 12,
+  secondLungtaCount: 8,
   lungtaWidth: 0.42,
   lungtaHeight: 0.34,
   lungtaSwayAmplitude: 0.06,
-  lungtaRope: { a: [-9.5, 5.1, -7.5], b: [10.5, 4.4, 9.0] },
+  lungtaRope: /** @type {{ a: [number, number, number], b: [number, number, number] }} */ ({ a: [-9.5, 5.1, -7.5], b: [10.5, 4.4, 9.0] }),
+  secondLungtaRope: /** @type {{ a: [number, number, number], b: [number, number, number] }} */ ({ a: [11.5, 5.0, -9.0], b: [-9.0, 4.5, 10.5] }),
   flagPoleHeight: 1.4,
   flagPoleRadius: 0.03,
   flagWidth: 0.95,
@@ -33,7 +35,21 @@ export const CULTURE_COLORS = {
 
 export const LUNGTA_COLORS = [0x2b5f9e, 0xf1f5f9, 0xb0342c, 0x2e7d4f, 0xe3b23c];
 
+export const LUNGTA_CLOTH_CSS = ['#2b5f9e', '#f1f5f9', '#b0342c', '#2e7d4f', '#e3b23c'];
+
+export const TORAN_FLOWER_COLORS = [0xea580c, 0xfbbf24, 0xc2185b];
+
+export const TASSEL_POSITIONS = [0, 0.25, 0.5, 0.75, 1];
+export const TASSEL_BEADS = 3;
+
 export const DIYO_FLICKER_RANGE = { min: 0.6, max: 1.4 };
+
+export const REDUCED_MOTION_SCALE = 0.2;
+
+/** @param {boolean} reducedMotion @returns {number} */
+export function motionScale(reducedMotion) {
+  return reducedMotion ? REDUCED_MOTION_SCALE : 1;
+}
 
 /** Layered-sine flame flicker multiplier in DIYO_FLICKER_RANGE. @param {number} t @returns {number} */
 export function diyoFlicker(t) {
@@ -163,11 +179,27 @@ function buildToran(scene, a, b, ropeMaterial, flowers, flowerOffset) {
   scene.add(rope);
 
   const matrix = new THREE.Matrix4();
+  let instance = flowerOffset;
   for (let i = 0; i < points.length; i++) {
     const [x, y, z] = points[i];
     matrix.makeTranslation(x, y - CULTURE.toranFlowerRadius * 1.4, z);
-    flowers.setMatrixAt(flowerOffset + i, matrix);
-    flowers.setColorAt(flowerOffset + i, new THREE.Color(i % 2 === 0 ? CULTURE_COLORS.marigold : CULTURE_COLORS.gold));
+    flowers.setMatrixAt(instance, matrix);
+    flowers.setColorAt(instance, new THREE.Color(TORAN_FLOWER_COLORS[i % TORAN_FLOWER_COLORS.length]));
+    instance++;
+  }
+  const anchorPoints = toranSagPoints([a.x, a.y, a.z], [b.x, b.y, b.z], TASSEL_POSITIONS.length, CULTURE.toranSag);
+  for (let i = 0; i < anchorPoints.length; i++) {
+    const [x, y, z] = anchorPoints[i];
+    for (let bead = 0; bead < TASSEL_BEADS; bead++) {
+      matrix.makeTranslation(
+        x,
+        y - CULTURE.toranFlowerRadius * (1.4 + bead * 1.9),
+        z,
+      );
+      flowers.setMatrixAt(instance, matrix);
+      flowers.setColorAt(instance, new THREE.Color(bead % 2 === 0 ? TORAN_FLOWER_COLORS[0] : TORAN_FLOWER_COLORS[2]));
+      instance++;
+    }
   }
 }
 
@@ -200,10 +232,18 @@ function buildRooftopFlag(scene, texture) {
   return { mesh, base, normals: [0, 1], phase: 0.7 };
 }
 
-/** @param {THREE.Scene} scene @param {THREE.WebGLRenderer} renderer */
-export function buildCulture(scene, renderer) {
-  const ropeA = new THREE.Vector3(...CULTURE.lungtaRope.a);
-  const ropeB = new THREE.Vector3(...CULTURE.lungtaRope.b);
+/**
+ * @param {THREE.Scene} scene
+ * @param {{ a: [number, number, number], b: [number, number, number] }} rope
+ * @param {number} count
+ * @param {THREE.MeshStandardMaterial[]} materials
+ * @param {THREE.LineBasicMaterial} lineMaterial
+ * @param {ClothFlag[]} flags
+ * @param {number} phaseSeed
+ */
+function buildFlagLine(scene, rope, count, materials, lineMaterial, flags, phaseSeed) {
+  const ropeA = new THREE.Vector3(...rope.a);
+  const ropeB = new THREE.Vector3(...rope.b);
   const ropeDir = ropeB.clone().sub(ropeA);
   const ropeLength = ropeDir.length();
   ropeDir.normalize();
@@ -211,36 +251,48 @@ export function buildCulture(scene, renderer) {
 
   const ropeLine = new THREE.Line(
     new THREE.BufferGeometry().setFromPoints([ropeA, ropeB]),
-    new THREE.LineBasicMaterial({ color: CULTURE_COLORS.rope }),
+    lineMaterial,
   );
   scene.add(ropeLine);
 
-  /** @type {ClothFlag[]} */
-  const flags = [];
-  for (let i = 0; i < CULTURE.lungtaCount; i++) {
-    const u = CULTURE.lungtaCount === 1 ? 0 : i / (CULTURE.lungtaCount - 1);
-    const material = new THREE.MeshStandardMaterial({
-      color: LUNGTA_COLORS[i % LUNGTA_COLORS.length],
-      side: THREE.DoubleSide,
-      roughness: 0.95,
-    });
+  for (let i = 0; i < count; i++) {
+    const u = count === 1 ? 0 : i / (count - 1);
     const mesh = new THREE.Mesh(
       new THREE.PlaneGeometry(CULTURE.lungtaWidth, CULTURE.lungtaHeight, 4, 2),
-      material,
+      materials[i % materials.length],
     );
     mesh.position.copy(ropeA).addScaledVector(ropeDir, u * ropeLength);
     mesh.position.y -= CULTURE.lungtaHeight / 2 + 0.02;
     mesh.rotation.y = Math.atan2(-basis.dirZ, basis.dirX);
     scene.add(mesh);
     const base = new Float32Array(mesh.geometry.getAttribute('position').array);
-    flags.push({ mesh, base, normals: [basis.normX, basis.normZ], phase: (i * 2.39996) % (Math.PI * 2) });
+    flags.push({ mesh, base, normals: [basis.normX, basis.normZ], phase: (phaseSeed + i * 2.39996) % (Math.PI * 2) });
   }
+}
 
+/** @param {THREE.Scene} scene @param {THREE.WebGLRenderer} renderer @param {{ reducedMotion?: boolean }} [options] */
+export function buildCulture(scene, renderer, options = {}) {
+  const reducedMotion = options.reducedMotion === true;
+  const scale = motionScale(reducedMotion);
+
+  const printMaterials = LUNGTA_CLOTH_CSS.map((clothColor) => new THREE.MeshStandardMaterial({
+    map: makeTexture(makeArt(64, 64, (ctx, w, h) => drawWindhorseFlag(ctx, w, h, clothColor)), renderer),
+    side: THREE.DoubleSide,
+    roughness: 0.95,
+  }));
+  const lineMaterial = new THREE.LineBasicMaterial({ color: CULTURE_COLORS.rope });
+
+  /** @type {ClothFlag[]} */
+  const flags = [];
+  buildFlagLine(scene, CULTURE.lungtaRope, CULTURE.lungtaCount, printMaterials, lineMaterial, flags, 0);
+  buildFlagLine(scene, CULTURE.secondLungtaRope, CULTURE.secondLungtaCount, printMaterials, lineMaterial, flags, Math.PI);
+
+  const instancesPerToran = CULTURE.toranCount + TASSEL_POSITIONS.length * TASSEL_BEADS;
   const ropeMaterial = new THREE.MeshStandardMaterial({ color: CULTURE_COLORS.rope, roughness: 0.9 });
   const flowers = new THREE.InstancedMesh(
     new THREE.SphereGeometry(CULTURE.toranFlowerRadius, 6, 5),
     new THREE.MeshStandardMaterial({ roughness: 0.75 }),
-    CULTURE.toranCount * 2,
+    instancesPerToran * 2,
   );
   buildToran(
     scene,
@@ -256,7 +308,7 @@ export function buildCulture(scene, renderer) {
     new THREE.Vector3(1.66, CULTURE.toranY, 1.62),
     ropeMaterial,
     flowers,
-    CULTURE.toranCount,
+    instancesPerToran,
   );
   flowers.instanceMatrix.needsUpdate = true;
   scene.add(flowers);
@@ -276,9 +328,16 @@ export function buildCulture(scene, renderer) {
       1,
     );
     for (const flag of flags) {
-      animateCloth(flag.mesh, flag.base, flag.normals, flag.phase, CULTURE.lungtaSwayAmplitude, t);
+      animateCloth(flag.mesh, flag.base, flag.normals, flag.phase, CULTURE.lungtaSwayAmplitude * scale, t);
     }
-    animateCloth(rooftopFlag.mesh, rooftopFlag.base, rooftopFlag.normals, rooftopFlag.phase, CULTURE.flagSwayAmplitude, t);
+    animateCloth(
+      rooftopFlag.mesh,
+      rooftopFlag.base,
+      rooftopFlag.normals,
+      rooftopFlag.phase,
+      CULTURE.flagSwayAmplitude * scale,
+      t,
+    );
   }
 
   return { update };

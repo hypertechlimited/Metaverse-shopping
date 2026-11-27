@@ -3,9 +3,14 @@ import {
   CULTURE,
   DIYO_FLICKER_RANGE,
   LUNGTA_COLORS,
+  TORAN_FLOWER_COLORS,
+  TASSEL_BEADS,
+  TASSEL_POSITIONS,
+  REDUCED_MOTION_SCALE,
   diyoFlicker,
   flagSway,
   toranSagPoints,
+  motionScale,
 } from '../../src/world/culture.js';
 import { PASAL_BOARD_TEXT, PASAL_BOARD_SUBTITLE } from '../../src/world/art.js';
 
@@ -99,6 +104,25 @@ describe('culture constants', () => {
   it('cycles lungta flags through the canonical five-color order', () => {
     expect(LUNGTA_COLORS).toEqual([0x2b5f9e, 0xf1f5f9, 0xb0342c, 0x2e7d4f, 0xe3b23c]);
     expect(CULTURE.lungtaCount % LUNGTA_COLORS.length).not.toBe(1);
+  });
+
+  it('keeps both lungta lines clear of the roof ridge and orbit camera', () => {
+    for (const rope of [CULTURE.lungtaRope, CULTURE.secondLungtaRope]) {
+      expect(rope.a[1]).toBeGreaterThan(4.3);
+      expect(rope.b[1]).toBeGreaterThan(4.3);
+    }
+  });
+
+  it('mixes makhamali into the toran and hangs tassels at five points', () => {
+    expect(TORAN_FLOWER_COLORS).toContain(0xc2185b);
+    expect(TASSEL_POSITIONS).toEqual([0, 0.25, 0.5, 0.75, 1]);
+    expect(TASSEL_BEADS).toBeGreaterThanOrEqual(2);
+  });
+
+  it('collapses wind motion under reduced-motion preference', () => {
+    expect(motionScale(false)).toBe(1);
+    expect(motionScale(true)).toBe(REDUCED_MOTION_SCALE);
+    expect(REDUCED_MOTION_SCALE).toBeLessThan(0.5);
   });
 
   it('configures the diyo as a physical falloff light', () => {

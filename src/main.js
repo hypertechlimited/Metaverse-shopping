@@ -6,10 +6,14 @@ import { OBSTACLES, LANDING_ORBIT } from './world/layout.js';
 import { makeArt, makeTexture, makeBump, drawBrick, drawBrickBump, drawCobble, drawCobbleBump } from './world/art.js';
 import { buildArchitecture } from './world/architecture.js';
 import { buildCulture } from './world/culture.js';
+import { buildAripana } from './world/mandala.js';
+import { buildAtmosphere } from './world/atmosphere.js';
+import { createDpad, createKeyboardControl, clampOrbitRadius, DPAD, directionVector } from './ui/dpad.js';
 
 const state = {
   mode: 'landing',
   orbitAngle: 0.9,
+  orbitRadius: LANDING_ORBIT.radius,
   paused: false,
 };
 
@@ -116,12 +120,28 @@ function boot() {
   buildLighting(scene);
   buildShell(scene, renderer);
   buildArchitecture(scene, renderer);
-  const culture = buildCulture(scene, renderer);
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const culture = buildCulture(scene, renderer, { reducedMotion });
+  buildAripana(scene, renderer);
+  const atmosphere = buildAtmosphere(scene, renderer, { reducedMotion });
 
   createStorage().load();
 
   const guard = createPointerGuard(canvas);
   void guard;
+
+  const applyDirection = (/** @type {import('./ui/dpad.js').Direction} */ direction) => {
+    const vector = directionVector(direction);
+    state.orbitAngle += vector.x * DPAD.stepAngle;
+    state.orbitRadius = clampOrbitRadius(state.orbitRadius + vector.z * DPAD.stepZoom);
+  };
+  const dpad = createDpad(document.body, { onDirection: applyDirection });
+  const keyboard = createKeyboardControl(window, { onDirection: applyDirection });
+  const releaseControls = () => {
+    dpad.dispose();
+    keyboard.dispose();
+  };
+  window.addEventListener('pagehide', releaseControls, { once: true });
 
   const disconnectResize = observeResize(canvas, ({ width, height }) => {
     renderer.setSize(width, height, false);
@@ -132,6 +152,7 @@ function boot() {
   /** @param {number} fixedDelta */
   function update(fixedDelta) {
     if (state.paused) return;
+    if (!Number.isFinite(fixedDelta)) return;
     if (state.mode === 'landing') {
       state.orbitAngle += fixedDelta * 0.12;
     }
@@ -140,11 +161,12 @@ function boot() {
   /** @param {number} timeMs */
   function render(timeMs) {
     culture.update(timeMs / 1000);
+    atmosphere.update(timeMs / 1000);
     if (state.mode === 'landing') {
       camera.position.set(
-        LANDING_ORBIT.target[0] + Math.cos(state.orbitAngle) * LANDING_ORBIT.radius,
+        LANDING_ORBIT.target[0] + Math.cos(state.orbitAngle) * state.orbitRadius,
         LANDING_ORBIT.height,
-        LANDING_ORBIT.target[2] + Math.sin(state.orbitAngle) * LANDING_ORBIT.radius,
+        LANDING_ORBIT.target[2] + Math.sin(state.orbitAngle) * state.orbitRadius,
       );
       camera.lookAt(LANDING_ORBIT.target[0], LANDING_ORBIT.target[1], LANDING_ORBIT.target[2]);
     }

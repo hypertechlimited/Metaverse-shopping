@@ -84,6 +84,25 @@ export function drawCobble(ctx, w, h) {
 export const PASAL_BOARD_TEXT = 'सगरमाथा कर्नर पसल';
 export const PASAL_BOARD_SUBTITLE = 'SAGARMATHA CORNER STORE';
 export const DEVANAGARI_FONT_STACK = "'Noto Sans Devanagari', 'Mangal', 'Nirmala UI', sans-serif";
+export const DEVANAGARI_FONT_FAMILY = 'Noto Sans Devanagari';
+export const DEVANAGARI_FONT_URL_WOFF2 = 'vendor/fonts/noto-sans-devanagari-devanagari-700-normal.woff2';
+export const DEVANAGARI_FONT_URL_WOFF = 'vendor/fonts/noto-sans-devanagari-devanagari-700-normal.woff';
+
+/** Loads the vendored Devanagari font; resolves false when unavailable. @returns {Promise<boolean>} */
+export async function loadDevanagariFont() {
+  if (typeof document === 'undefined' || typeof FontFace === 'undefined') return false;
+  const face = new FontFace(
+    DEVANAGARI_FONT_FAMILY,
+    `url(${DEVANAGARI_FONT_URL_WOFF2}) format('woff2'), url(${DEVANAGARI_FONT_URL_WOFF}) format('woff')`,
+  );
+  try {
+    await face.load();
+    document.fonts.add(face);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export const BOARD_COLORS = {
   crimson: '#991b1b',
@@ -106,6 +125,18 @@ export const ANKHI_JHYAL_COLORS = {
   timberDark: '#301a10',
   glow: '#fbbf24',
   glowDeep: '#8a4a12',
+};
+
+export const ARIPANA_COLORS = {
+  riceFlour: '#f2ead9',
+  riceFlourSoft: 'rgba(242, 234, 217, 0.55)',
+  mustardOil: 'rgba(179, 128, 26, 0.5)',
+  sindoor: 'rgba(153, 27, 27, 0.4)',
+};
+
+export const LUNGTA_PRINT_COLORS = {
+  ink: 'rgba(245, 243, 235, 0.92)',
+  clothShade: 'rgba(0, 0, 0, 0.14)',
 };
 
 /** @param {CanvasRenderingContext2D} ctx @param {number} w @param {number} h */
@@ -232,6 +263,125 @@ export function drawFlame(ctx, w, h) {
   ctx.beginPath();
   ctx.ellipse(w / 2, h * 0.6, w * 0.08, h * 0.2, 0, 0, Math.PI * 2);
   ctx.fill();
+}
+
+/** @param {CanvasRenderingContext2D} ctx @param {number} w @param {number} h @param {number} [petalCount] */
+export function drawAripana(ctx, w, h, petalCount = 8) {
+  const cx = w / 2;
+  const cy = h / 2;
+  const unit = Math.min(w, h) / 2;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = ARIPANA_COLORS.riceFlour;
+  ctx.fillStyle = ARIPANA_COLORS.riceFlour;
+  ctx.globalAlpha = 0.9;
+  ctx.lineWidth = unit * 0.035;
+  ctx.beginPath();
+  ctx.arc(cx, cy, unit * 0.94, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx, cy, unit * 0.86, 0, Math.PI * 2);
+  ctx.stroke();
+  for (let i = 0; i < 28; i++) {
+    const angle = (i / 28) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(angle) * unit * 0.76, cy + Math.sin(angle) * unit * 0.76, unit * 0.022, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  for (let p = 0; p < petalCount; p++) {
+    const angle = (p / petalCount) * Math.PI * 2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(angle);
+    ctx.beginPath();
+    ctx.ellipse(0, -unit * 0.44, unit * 0.13, unit * 0.3, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(0, -unit * 0.44, unit * 0.05, unit * 0.16, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+  ctx.beginPath();
+  ctx.arc(cx, cy, unit * 0.2, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = ARIPANA_COLORS.mustardOil;
+  ctx.beginPath();
+  ctx.arc(cx, cy, unit * 0.11, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = ARIPANA_COLORS.sindoor;
+  for (const [sx, sy] of [[-0.94, 0], [0.94, 0], [0, -0.94], [0, 0.94]]) {
+    ctx.beginPath();
+    ctx.arc(cx + sx * unit, cy + sy * unit, unit * 0.05, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+/** @param {CanvasRenderingContext2D} ctx @param {number} w @param {number} h @param {string} clothColor */
+export function drawWindhorseFlag(ctx, w, h, clothColor) {
+  ctx.fillStyle = clothColor;
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = LUNGTA_PRINT_COLORS.clothShade;
+  for (let i = 0; i < 18; i++) {
+    const px = (Math.abs(Math.sin(i * 12.9898 + 3.1) * 43758.5453) % 1) * w;
+    const py = (Math.abs(Math.sin(i * 78.233 + 1.7) * 43758.5453) % 1) * h;
+    ctx.fillRect(px, py, 8, 3);
+  }
+  ctx.strokeStyle = LUNGTA_PRINT_COLORS.ink;
+  ctx.fillStyle = LUNGTA_PRINT_COLORS.ink;
+  ctx.lineWidth = 3;
+  ctx.strokeRect(4, 4, w - 8, h - 8);
+  const cx = w / 2;
+  const cy = h * 0.56;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, w * 0.22, h * 0.13, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(cx + w * 0.1, cy - h * 0.08);
+  ctx.lineTo(cx + w * 0.26, cy - h * 0.3);
+  ctx.lineTo(cx + w * 0.34, cy - h * 0.24);
+  ctx.lineTo(cx + w * 0.16, cy - h * 0.02);
+  ctx.closePath();
+  ctx.fill();
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  for (const [lx, ly] of [[-0.14, 0.1], [-0.05, 0.12], [0.06, 0.12], [0.15, 0.1]]) {
+    ctx.beginPath();
+    ctx.moveTo(cx + w * lx, cy + ly * h * 0.4);
+    ctx.lineTo(cx + w * lx - w * 0.02, h * 0.88);
+    ctx.stroke();
+  }
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(cx - w * 0.22, cy - h * 0.04);
+  ctx.quadraticCurveTo(cx - w * 0.36, cy - h * 0.18, cx - w * 0.3, cy - h * 0.34);
+  ctx.stroke();
+  for (const [mx, my] of [[-0.38, -0.36], [0.38, -0.36], [-0.38, 0.36], [0.38, 0.36]]) {
+    ctx.beginPath();
+    ctx.arc(cx + w * mx, cy + h * my, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  for (let i = 0; i < 4; i++) {
+    ctx.fillRect(w * 0.16 + i * w * 0.06, h * 0.14, 2, h * 0.1);
+  }
+}
+
+/** @param {CanvasRenderingContext2D} ctx @param {number} w @param {number} h */
+export function drawShaft(ctx, w, h) {
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, 'rgba(255, 226, 168, 0.5)');
+  grad.addColorStop(0.55, 'rgba(255, 214, 150, 0.18)');
+  grad.addColorStop(1, 'rgba(255, 210, 140, 0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+  const sideFade = ctx.createLinearGradient(0, 0, w, 0);
+  sideFade.addColorStop(0, 'rgba(0, 0, 0, 0.55)');
+  sideFade.addColorStop(0.3, 'rgba(0, 0, 0, 0)');
+  sideFade.addColorStop(0.7, 'rgba(0, 0, 0, 0)');
+  sideFade.addColorStop(1, 'rgba(0, 0, 0, 0.55)');
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.fillStyle = sideFade;
+  ctx.fillRect(0, 0, w, h);
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 /** @param {CanvasRenderingContext2D} ctx @param {number} w @param {number} h */

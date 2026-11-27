@@ -55,3 +55,44 @@ html, body {
 }
 
 .fallback-card h1 { font-size: 1.5rem; margin: 0 0 1rem; }
+
+.dpad {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: repeat(3, 56px);
+  grid-template-rows: repeat(3, 56px);
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.dpad-btn {
+  border: none;
+  border-radius: 12px;
+  background: rgba(20, 12, 8, 0.62);
+  color: #f5efe6;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dpad-btn:active { background: rgba(143, 59, 38, 0.8); }
+
+.dpad-btn svg { width: 24px; height: 24px; }
+
+.dpad-left { grid-column: 1; grid-row: 2; }
+.dpad-right { grid-column: 3; grid-row: 2; }
+.dpad-up { grid-column: 2; grid-row: 1; }
+.dpad-down { grid-column: 2; grid-row: 3; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dpad-btn { transition: none; }
+}
