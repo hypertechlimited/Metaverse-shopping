@@ -12,7 +12,7 @@ export const PROPS = {
   glass: { radius: 0.035, height: 0.095, teaHeight: 0.055 },
   qr: { width: 0.13, height: 0.19, thickness: 0.016, tilt: -0.32 },
   glaze: { color: 0x8a3b22, roughness: 0.3, clearcoat: 1.0, clearcoatRoughness: 0.18 },
-  glassPane: { color: 0xd8e4e0, roughness: 0.05, transmission: 0.85, thickness: 0.04, ior: 1.45 },
+  glassPane: { color: 0xd8e4e0, roughness: 0.05, transmission: 0.85, thickness: 0.04, ior: 1.45, fallbackOpacity: 0.35 },
   scatter: {
     pebbleCount: 84,
     petalCount: 48,
@@ -33,6 +33,25 @@ export const PROPS = {
 /** @param {number} seed @returns {number} deterministic hash in [0, 1) */
 function hash01(seed) {
   return Math.abs(Math.sin(seed) * 43758.5453) % 1;
+}
+
+/** @param {string | null} gpuName @returns {boolean} true when the GPU string identifies a software rasterizer */
+export function isSoftwareGpu(gpuName) {
+  if (!gpuName) return false;
+  return /swiftshader|llvmpipe|softpipe|software/i.test(gpuName);
+}
+
+/**
+ * Transmission renders the opaque scene to an internal buffer every frame;
+ * on software rasterizers that starves the main thread, so the tier falls
+ * back to blended transparency there.
+ * @param {THREE.WebGLRenderer} renderer @returns {boolean}
+ */
+function hardwareAccelerated(renderer) {
+  const gl = renderer.getContext();
+  const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+  if (!debugInfo) return true;
+  return !isSoftwareGpu(String(gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)));
 }
 
 /** @param {number} x @param {number} z @returns {boolean} */
@@ -220,13 +239,20 @@ export function buildProps(scene, renderer) {
     clearcoat: PROPS.glaze.clearcoat,
     clearcoatRoughness: PROPS.glaze.clearcoatRoughness,
   });
-  const glassMaterial = new THREE.MeshPhysicalMaterial({
-    color: PROPS.glassPane.color,
-    roughness: PROPS.glassPane.roughness,
-    transmission: PROPS.glassPane.transmission,
-    thickness: PROPS.glassPane.thickness,
-    ior: PROPS.glassPane.ior,
-  });
+  const glassMaterial = hardwareAccelerated(renderer)
+    ? new THREE.MeshPhysicalMaterial({
+        color: PROPS.glassPane.color,
+        roughness: PROPS.glassPane.roughness,
+        transmission: PROPS.glassPane.transmission,
+        thickness: PROPS.glassPane.thickness,
+        ior: PROPS.glassPane.ior,
+      })
+    : new THREE.MeshStandardMaterial({
+        color: PROPS.glassPane.color,
+        roughness: PROPS.glassPane.roughness,
+        transparent: true,
+        opacity: PROPS.glassPane.fallbackOpacity,
+      });
   const teaMaterial = new THREE.MeshStandardMaterial({ color: PROPS.colors.tea, roughness: 0.2 });
   const cardMaterial = new THREE.MeshStandardMaterial({ color: PROPS.colors.card, roughness: 0.85 });
   const qrMaterial = new THREE.MeshStandardMaterial({ map: makeTexture(makeArt(128, 128, drawQrPattern), renderer), roughness: 0.8 });

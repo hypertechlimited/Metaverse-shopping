@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PROPS, PROP_NAMES, PROPS_DRAW_CALL_BUDGET, propPlacements, sackPlacements, scatterPlacements } from '../../src/world/props.js';
+import { PROPS, PROP_NAMES, PROPS_DRAW_CALL_BUDGET, propPlacements, sackPlacements, scatterPlacements, isSoftwareGpu } from '../../src/world/props.js';
 import { OBSTACLES, ENTER_POSITION } from '../../src/world/layout.js';
 import { MANDALA } from '../../src/world/mandala.js';
 import { ARCHITECTURE } from '../../src/world/architecture.js';
@@ -50,6 +50,15 @@ describe('physical hero materials', () => {
     expect(PROPS.glassPane.thickness).toBeGreaterThan(0);
     expect(PROPS.glassPane.ior).toBeGreaterThanOrEqual(1.3);
     expect(PROPS.glassPane.ior).toBeLessThanOrEqual(1.6);
+  });
+
+  it('downgrades the glass tier on software rasterizers, keeps it on hardware', () => {
+    expect(isSoftwareGpu('SwiftShader')).toBe(true);
+    expect(isSoftwareGpu('llvmpipe (LLVM 15.0.4, 256 bits)')).toBe(true);
+    expect(isSoftwareGpu('ANGLE (NVIDIA GeForce RTX 4060)')).toBe(false);
+    expect(isSoftwareGpu(null)).toBe(false);
+    expect(PROPS.glassPane.fallbackOpacity).toBeGreaterThan(0);
+    expect(PROPS.glassPane.fallbackOpacity).toBeLessThan(0.6);
   });
 });
 

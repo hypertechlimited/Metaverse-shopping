@@ -352,8 +352,8 @@ html, body {
   transition: background var(--micro-ease), transform var(--micro-ease);
 }
 
-.hud-cart:hover { background: rgba(15, 118, 110, 0.85); transform: translateY(-1px); }
-.hud-cart:active { transform: translateY(0) scale(0.97); }
+.hud-cart:hover { background: rgba(15, 118, 110, 0.85); }
+.hud-cart:active { transform: scale(0.97); }
 .hud-cart:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .hud-cart:disabled { opacity: 0.55; cursor: default; }
 .hud-cart:disabled:hover { background: rgba(20, 12, 8, 0.78); }
@@ -465,10 +465,10 @@ body[data-mode="landing"] .hud-commerce { display: none; }
   margin: 0 4px 8px;
   border-radius: 12px;
   background: rgba(245, 239, 230, 0.06);
-  transition: background var(--micro-ease), transform var(--micro-ease);
+  transition: background var(--micro-ease);
 }
 
-.catalog-row:hover { background: rgba(245, 239, 230, 0.11); transform: translateX(2px); }
+.catalog-row:hover { background: rgba(245, 239, 230, 0.11); }
 .catalog-row.is-blocked { animation: row-blocked 0.24s ease-out; }
 
 @keyframes row-blocked {

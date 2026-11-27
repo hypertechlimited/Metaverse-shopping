@@ -34,8 +34,9 @@ Findings from the current three.js / spatial-design corpus that bind the decisio
 ### R3 — Physical hero materials (`props.js`)
 - Glazed jars → `MeshPhysicalMaterial` clearcoat 1.0, clearcoatRoughness 0.18 (ceramic varnish response under IBL).
 - Chiya glass → `MeshPhysicalMaterial` transmission 0.85, thickness 0.04, ior 1.45 (real refraction of the counter behind it).
+- **Adaptive tier (CI-mandated):** transmission renders the opaque scene to an internal buffer every frame — on software rasterizers (SwiftShader/llvmpipe) it starves the main thread and the golden suite cannot complete. `isSoftwareGpu()` (pure, unit-tested) probes `WEBGL_debug_renderer_info`; software GL falls back to blended transparency (`fallbackOpacity 0.35`). Hardware gets full transmission.
 - Brass balance scale stays `MeshStandardMaterial` (metal + IBL is the correct cheap model).
-- **AC:** material parameters live in `PROPS` constants (named, testable); props draw-call budget stays ≤ 9.
+- **AC:** material parameters live in `PROPS` constants (named, testable); props draw-call budget stays ≤ 9; hover states never apply transforms to clickable rows/buttons (Playwright actionability hazard).
 
 ### R4 — Instanced ground detail (`props.js`)
 - Pure `scatterPlacements()`: deterministic pebbles + marigold petals across the street, rejecting `OBSTACLES` interiors and the south aripana mandala.
