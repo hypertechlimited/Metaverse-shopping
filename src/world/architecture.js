@@ -17,7 +17,7 @@ export const ARCHITECTURE = {
   thaamInset: 0.28,
   boardWidth: 2.6,
   boardHeight: 0.85,
-  boardY: 2.5,
+  boardY: 2.24,
   windowWidth: 1.1,
   windowHeight: 1.3,
   windowY: 2.1,
