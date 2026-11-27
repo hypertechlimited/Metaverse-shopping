@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OBSTACLES } from './layout.js';
-import { makeArt, makeTexture, makeBump, drawZinc, drawZincBump, drawAnkhiJhyal, drawPasalBoard, loadDevanagariFont } from './art.js';
+import { makeArt, makeTexture, makeBump, drawZinc, drawZincBump, drawZincRoughness, drawAnkhiJhyal, drawPasalBoard, loadDevanagariFont } from './art.js';
 
 export const ARCHITECTURE = {
   awningDepth: 1.35,
@@ -32,6 +32,19 @@ export const ARCHITECTURE_COLORS = {
   shutterTeal: 0x0f766e,
   stone: 0x8a8578,
   rimLight: 0x9fc4e8,
+  counterTop: 0x3a2417,
+};
+
+export const MOLDINGS = {
+  plinthGrow: 0.12,
+  plinthHeight: 0.1,
+  capitalGrow: 0.1,
+  capitalHeight: 0.09,
+  counterSlabGrowX: 0.12,
+  counterSlabGrowZ: 0.14,
+  counterSlabHeight: 0.07,
+  fasciaHeight: 0.16,
+  fasciaThickness: 0.05,
 };
 
 const WALL_NAMES = { back: 'Back Brick Wall', left: 'Left Brick Wall' };
@@ -298,6 +311,66 @@ function buildRoof(scene, zincMaterial, walls) {
   southPanel.rotation.x = slope;
   const ridgeCap = addMesh(scene, new THREE.BoxGeometry(length + 0.2, 0.1, 0.34), zincMaterial);
   ridgeCap.position.set(centerX, ARCHITECTURE.ridgeY + 0.03, ridgeZ);
+  const fasciaLength = walls.back.maxX - walls.back.minX + ARCHITECTURE.roofOverhang * 2;
+  for (const side of [-1, 1]) {
+    const fascia = addMesh(
+      scene,
+      new THREE.BoxGeometry(fasciaLength, MOLDINGS.fasciaHeight, MOLDINGS.fasciaThickness),
+      zincMaterial,
+    );
+    fascia.position.set(centerX, ARCHITECTURE.eaveY, ridgeZ + side * span);
+  }
+}
+
+/**
+ * Stone pillar dressing: plinth + capital read as molded stone instead of a bare box.
+ * @param {THREE.Scene} scene @param {THREE.Material} stoneMaterial
+ */
+function buildPillarDetail(scene, stoneMaterial) {
+  const pillar = OBSTACLES.find((box) => box.name === 'Corner Pillar');
+  if (!pillar) throw new Error('layout.js must define the corner pillar');
+  const width = pillar.maxX - pillar.minX;
+  const depth = pillar.maxZ - pillar.minZ;
+  const height = 1.0;
+  const cx = (pillar.minX + pillar.maxX) / 2;
+  const cz = (pillar.minZ + pillar.maxZ) / 2;
+  const plinth = addMesh(
+    scene,
+    new THREE.BoxGeometry(width + MOLDINGS.plinthGrow, MOLDINGS.plinthHeight, depth + MOLDINGS.plinthGrow),
+    stoneMaterial,
+  );
+  plinth.position.set(cx, MOLDINGS.plinthHeight / 2, cz);
+  const capital = addMesh(
+    scene,
+    new THREE.BoxGeometry(width + MOLDINGS.capitalGrow, MOLDINGS.capitalHeight, depth + MOLDINGS.capitalGrow),
+    stoneMaterial,
+  );
+  capital.position.set(cx, height - MOLDINGS.capitalHeight / 2, cz);
+}
+
+/**
+ * Timber counter slab with a front overhang, resting on the OBSTACLES counter box.
+ * @param {THREE.Scene} scene @param {THREE.Material} slabMaterial
+ */
+function buildCounterTop(scene, slabMaterial) {
+  const counter = OBSTACLES.find((box) => box.name === 'Wooden Counter');
+  if (!counter) throw new Error('layout.js must define the wooden counter');
+  const width = counter.maxX - counter.minX;
+  const depth = counter.maxZ - counter.minZ;
+  const slab = addMesh(
+    scene,
+    new THREE.BoxGeometry(
+      width + MOLDINGS.counterSlabGrowX,
+      MOLDINGS.counterSlabHeight,
+      depth + MOLDINGS.counterSlabGrowZ,
+    ),
+    slabMaterial,
+  );
+  slab.position.set(
+    (counter.minX + counter.maxX) / 2,
+    1.0 + MOLDINGS.counterSlabHeight / 2,
+    (counter.minZ + counter.maxZ) / 2,
+  );
 }
 
 /** @param {THREE.Scene} scene @param {THREE.WebGLRenderer} renderer */
@@ -306,17 +379,20 @@ export function buildArchitecture(scene, renderer) {
 
   const zincMap = makeTexture(makeArt(256, 256, drawZinc), renderer);
   const zincBump = makeBump(makeArt(256, 256, drawZincBump));
+  const zincRoughness = makeBump(makeArt(256, 256, drawZincRoughness));
   const zincMaterial = new THREE.MeshStandardMaterial({
     map: zincMap,
     bumpMap: zincBump,
     bumpScale: 0.35,
-    roughness: 0.55,
+    roughnessMap: zincRoughness,
+    roughness: 1.0,
     metalness: 0.45,
     side: THREE.DoubleSide,
   });
   zincMap.repeat.set(3, 1);
 
   const timberMaterial = new THREE.MeshStandardMaterial({ color: ARCHITECTURE_COLORS.timber, roughness: 0.82 });
+  const slabMaterial = new THREE.MeshStandardMaterial({ color: ARCHITECTURE_COLORS.counterTop, roughness: 0.6 });
   const stoneMaterial = new THREE.MeshStandardMaterial({ color: ARCHITECTURE_COLORS.stone, roughness: 0.92 });
   const shutterMaterial = new THREE.MeshStandardMaterial({ color: ARCHITECTURE_COLORS.shutterTeal, roughness: 0.5, metalness: 0.35 });
   const windowMaterial = new THREE.MeshStandardMaterial({
@@ -327,6 +403,8 @@ export function buildArchitecture(scene, renderer) {
   buildThaam(scene, timberMaterial, walls);
   buildShutterHousings(scene, shutterMaterial, walls);
   buildPedi(scene, stoneMaterial, walls);
+  buildPillarDetail(scene, stoneMaterial);
+  buildCounterTop(scene, slabMaterial);
   buildAnkhiJhyal(scene, windowMaterial, walls);
   buildPasalBoard(scene, walls, renderer);
   buildRoof(scene, zincMaterial, walls);

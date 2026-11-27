@@ -16,7 +16,7 @@ Black Forest API, design-time only  procedural, in-app, budget-bound
                                       └── golden test: render vs. reference
 ```
 
-## Track R — AI Photoreal References (design-time)
+## Track R — AI Photoreal References (design-time) ✅ **ALL 4 GENERATED & VISION-GATED (M2.5, 2026-11-27)**
 
 Generated with the Black Forest API; exact prompts live in [`REFERENCE-PROMPTS.md`](REFERENCE-PROMPTS.md). Four mockups define the look:
 
@@ -58,6 +58,14 @@ Rules for Track R:
 
 ### Performance guardrails (unchanged)
 All of the above must hold ≤ 80 draw calls, ≤ 5 MB, ≥ 30 FPS mid-range Android. Dust motes and light shaft are the first things cut on the low-end profile.
+
+### Track E status after M2.5 (Render & Presence Overhaul)
+- **Sky + IBL:** procedural equirect golden-hour sky (`drawSky`) drives both `scene.background` and a `PMREMGenerator.fromEquirectangular` environment map (`world/theme.js`) — image-based ambient replaces the flat hemisphere-only look.
+- **Grade:** ACES exposure locked at 1.05 in `THEME`; bloom (UnrealBloomPass, threshold 0.82, strength 0.32) behind a pixel-budget tier (`engine/post.js`) plus a zero-draw-call CSS vignette + grain overlay (`#film`).
+- **Materials:** brick/cobble/zinc gained roughness maps (mortar rough vs fired brick, joint rough vs worn stone, ridge-polished vs rusty valley); cobble got per-stone hue families + large-scale dirt/dust blotches; lungta cloth got weave noise.
+- **Contact:** baked radial-gradient AO decals under counter, pillar, thaam bases and along both pedi fronts (`contactDecals()` — pure, layout-derived).
+- **Props:** counter jars, brass balance scale, chiya glass, QR stand, burlap sack line — merged same-material geometry, ≤ 7 draw calls (`world/props.js`, placements pure from `layout.js`).
+- **Deferred:** dusk lighting preset (reference 04) stays behind the FPS budget until M5.
 
 ## Verification
 

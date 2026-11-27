@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DPAD, DIRECTIONS, directionVector, clampOrbitRadius, keyToDirection } from '../../src/ui/dpad.js';
+import { DPAD, DIRECTIONS, DRAG, directionVector, clampOrbitRadius, dragOrbit, keyToDirection } from '../../src/ui/dpad.js';
 
 /** @param {string} key @returns {KeyboardEvent} */
 const keyEvent = (key) => /** @type {KeyboardEvent} */ (/** @type {any} */ ({ key }));
@@ -25,6 +25,33 @@ describe('d-pad direction vectors', () => {
   it('exposes exactly four directions with 44px+ touch targets', () => {
     expect(DIRECTIONS).toEqual(['left', 'right', 'up', 'down']);
     expect(DPAD.buttonSizePx).toBeGreaterThanOrEqual(44);
+  });
+});
+
+describe('pointer-drag orbit mapping', () => {
+  it('rotates with horizontal drag and zooms with vertical drag', () => {
+    const orbit = { angle: 0.9, radius: 9.8 };
+    const dragged = dragOrbit(orbit, 50, -40);
+    expect(dragged.angle).toBeCloseTo(0.9 - 50 * DRAG.anglePerPixel, 5);
+    expect(dragged.radius).toBeCloseTo(9.8 - 40 * DRAG.radiusPerPixel, 5);
+  });
+
+  it('never mutates the input orbit', () => {
+    const orbit = { angle: 1.2, radius: 8 };
+    dragOrbit(orbit, 30, 30);
+    expect(orbit).toEqual({ angle: 1.2, radius: 8 });
+  });
+
+  it('clamps zoom to the d-pad radius limits, drag or not', () => {
+    const zoomedIn = dragOrbit({ angle: 0, radius: 6.3 }, 0, -100);
+    const zoomedOut = dragOrbit({ angle: 0, radius: 12.4 }, 0, 100);
+    expect(zoomedIn.radius).toBe(DPAD.minRadius);
+    expect(zoomedOut.radius).toBe(DPAD.maxRadius);
+  });
+
+  it('keeps per-pixel sensitivity gentle so a full drag sweeps, not snaps', () => {
+    expect(DRAG.anglePerPixel).toBeLessThan(0.02);
+    expect(DRAG.radiusPerPixel).toBeLessThan(0.05);
   });
 });
 

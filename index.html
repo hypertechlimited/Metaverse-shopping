@@ -6,11 +6,17 @@
   <title>Sagarmatha Metaverse Corner Kirana Pasal</title>
   <link rel="stylesheet" href="src/ui/styles.css">
   <script type="importmap">
-    { "imports": { "three": "./vendor/three/three.module.js" } }
+    {
+      "imports": {
+        "three": "./vendor/three/three.module.js",
+        "three/addons/": "./vendor/three/addons/"
+      }
+    }
   </script>
 </head>
 <body>
   <canvas id="scene" aria-label="Sagarmatha corner pasal, 3D street view"></canvas>
+  <div id="film" aria-hidden="true"></div>
   <div id="hud"></div>
   <div id="webgl-fallback" hidden>
     <div class="fallback-card">
