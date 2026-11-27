@@ -47,8 +47,19 @@ This project is AI-built; published analyses find AI-generated code carries ~1.7
 - **Small reviewable diffs.** The single most effective defense against confident-but-wrong generated code.
 - Multi-agent execution follows `docs/SWARM-EXECUTION.md`: parallelize reading, serialize writing, verify independently — verification agents never see the implementer's reasoning.
 
+## Release Workflow (binding — user-mandated 2026-11-27)
+
+These rules override any default workflow habit. They are permanent.
+
+1. **Ask before every push.** No `git push`, no PR creation, no PR update without explicit user approval in the current conversation turn. Local commits are allowed; remote writes are not.
+2. **One branch per milestone**, branched from `main`: `milestone/m0-engine-core`, `milestone/m1-architecture-culture`, … Never commit to `main` directly.
+3. **One commit per milestone.** Interim commits on the milestone branch are fine, but the PR merges as a **single squash commit** — `main` history reads as exactly one commit per milestone, named after the milestone.
+4. **CI gates every PR.** Every PR runs the GitHub Actions workflow (type check → unit tests → Playwright golden tests for the web pages). A PR is mergeable only when **every check is green**.
+5. **Fix until green, then ask.** If any check fails, fix the root cause and re-run — iterating entirely inside the sandbox — until green. Only then ask the user for push/merge approval. Never merge red.
+6. **Product focus order:** inventory management and checkout correctness are the core; product items UI/UX is the second priority; 3D asset quality serves both. Feature work is sequenced by that order.
+
 ## Git Discipline
 
-- Branch per task: `vibe/<short-slug>-<taskid>`; never commit to `main` directly.
-- Small focused commits after meaningful units of work; no `git add -A` when unrelated files are dirty.
+- Branch and merge rules in **Release Workflow** above govern everything in this section.
+- Small focused commits locally; no `git add -A` when unrelated files are dirty.
 - Never commit secrets, generated screenshots of real users, or large binaries (budget: no file over 1 MB in git).
