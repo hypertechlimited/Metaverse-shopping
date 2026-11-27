@@ -22,7 +22,7 @@
 ### Binding behaviors
 - **No emoji as UI.** Icons are drawn (canvas/SVG), culturally grounded (sayapatri, diyo, thaam motifs).
 - **No six-card rows, no icon-heading-two-line-tiles, no bounce-on-hover.** One accent motion per surface.
-- **Motion:** cubic ease-out for camera tweens, 0.65 s overlay fades, staggered UI entrances ≤ 400 ms total, nothing above 650 ms. Motion communicates space; it never decorates. `prefers-reduced-motion` collapses tweens to instant.
+- **Motion:** cubic ease-out for camera tweens (0.9 s for the landing→in-store transition; all other UI motion ≤ 650 ms), 0.65 s overlay fades, staggered UI entrances ≤ 400 ms total. Motion communicates space; it never decorates. `prefers-reduced-motion` collapses tweens to instant.
 - **Sound:** silence is default. Sound is an event (bell chord on entry). All audio behind a user gesture. Volume conservative.
 - **Density over emptiness:** a real pasal is visually dense and slightly cluttered — merchandising must feel lived-in, not like a glassmorphic dashboard.
 

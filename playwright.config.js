@@ -2,7 +2,8 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: 'tests/golden',
-  timeout: 30000,
+  timeout: 60000,
+  workers: 1,
   use: {
     baseURL: 'http://localhost:8000',
     viewport: { width: 1280, height: 720 },

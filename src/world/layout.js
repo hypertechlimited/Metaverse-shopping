@@ -2,8 +2,10 @@ export const PLAYER_RADIUS = 0.45;
 
 export const STREET = { minX: -14, maxX: 14, minZ: -14, maxZ: 14 };
 
+/** @type {{ radius: number, height: number, target: [number, number, number] }} */
 export const LANDING_ORBIT = { radius: 9.8, height: 3.8, target: [0, 1.2, 0] };
 
+/** @type {[number, number, number]} */
 export const ENTER_POSITION = [6.8, 2.9, 7.6];
 
 /** @type {Array<{ name: string, minX: number, maxX: number, minZ: number, maxZ: number }>} */
