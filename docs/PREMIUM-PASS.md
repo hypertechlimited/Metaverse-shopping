@@ -19,7 +19,7 @@ Findings from the current three.js / spatial-design corpus that bind the decisio
 ### R1 — Flagship sky (feeds background + IBL)
 `art.js` `drawSky` rewritten; `SKY_COLORS`/`SKY` re-graded.
 - Richer vertical grade: deep alpine zenith → dusty upper band → warm horizon → bright glow → terracotta ground (6+ stops, named constants).
-- Authored sun: layered radial halo + crisp disc with soft edge at the golden-hour bearing (deterministic, seeded by existing sin-hash convention).
+- Authored sun: layered radial halo + crisp disc with soft edge at 18° golden-hour elevation (glowY 0.4); halo localized (0.11 × width) so the zenith grade stays deep — vision review of CI run 1 showed a 0.2-radius halo washed the whole sky beige.
 - Horizon ridge silhouette (sine-sum polyline, far distance) so the equirect reads as a valley, not a void.
 - Stratified cloud bands: thin high streaks + soft mid haze, deterministic.
 - **AC:** pure function of `(ctx, w, h)`; all colors from named constants; no `Math.random`. Theme test asserts new constants exist and sun disc coords match `SKY.glowX/glowY`.
@@ -28,6 +28,7 @@ Findings from the current three.js / spatial-design corpus that bind the decisio
 6–8 hand-authored neighbor building masses ringing the street, fog-faded at 14–20 units.
 - Pure `facadesLayout()` derived from `layout.js` STREET bounds — masses on the north/west backdrop (what the entrance/overview cameras actually see) plus east/south far masses so the landing orbit sweep never shows void.
 - Each mass: plaster body + zinc roof slab + recessed window grid on the street-facing side. Bodies merged to one draw call, windows to one, roofs to one (reuse `drawZinc` texture).
+- Facade grounding: per-vertex color lift (0.7 at base → 1.0 at top) fakes AO so masses don't read ambient-flat (vision review, CI run 1).
 - **AC (tests):** 6–8 masses; every mass ≥ 11.5 units from origin (never intersects landing orbit r=9.8 or any `CAMERA_PRESETS` position); all masses ≤ 26 units (inside the fog read); layout deterministic; masses never overlap `OBSTACLES`.
 - **Budget:** exactly 3 draw calls.
 

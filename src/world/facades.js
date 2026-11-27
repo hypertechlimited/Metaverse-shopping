@@ -4,7 +4,7 @@ import { makeArt, makeTexture, drawZinc } from './art.js';
 
 /** @typedef {'north' | 'south' | 'east' | 'west'} FacadeFacing */
 
-/** @type {{ blocks: Array<{ name: string, x: number, z: number, width: number, depth: number, height: number, facing: FacadeFacing }>, window: { width: number, height: number, depth: number, cols: number, rows: number, baseY: number, rowStep: number, margin: number }, roof: { overhang: number, thickness: number, textureSize: number, textureRepeat: number }, colors: { plaster: number, plasterAlt: number, window: number, roofTint: number } }} */
+/** @type {{ blocks: Array<{ name: string, x: number, z: number, width: number, depth: number, height: number, facing: FacadeFacing }>, window: { width: number, height: number, depth: number, cols: number, rows: number, baseY: number, rowStep: number, margin: number }, grounding: number, roof: { overhang: number, thickness: number, textureSize: number, textureRepeat: number }, colors: { plaster: number, plasterAlt: number, window: number, roofTint: number } }} */
 export const FACADES = {
   blocks: [
     { name: 'North A', x: -10.5, z: -16.8, width: 5.4, depth: 4.2, height: 5.6, facing: 'south' },
@@ -17,6 +17,7 @@ export const FACADES = {
     { name: 'East Far', x: 18.6, z: 8.2, width: 4.8, depth: 4.4, height: 4.6, facing: 'west' },
   ],
   window: { width: 0.7, height: 0.9, depth: 0.06, cols: 3, rows: 2, baseY: 1.4, rowStep: 1.35, margin: 0.55 },
+  grounding: 0.7,
   roof: { overhang: 0.35, thickness: 0.14, textureSize: 256, textureRepeat: 2 },
   colors: { plaster: 0xc4ad92, plasterAlt: 0xb59a7d, window: 0x241409, roofTint: 0xffffff },
 };
@@ -94,11 +95,13 @@ export function buildFacades(scene, renderer) {
     const body = new THREE.BoxGeometry(block.width, block.height, block.depth);
     body.translate(block.x, block.height / 2, block.z);
     const tone = bodyParts.length % 2 === 0 ? toneA : toneB;
-    const colors = new Float32Array(body.attributes.position.count * 3);
-    for (let i = 0; i < colors.length; i += 3) {
-      colors[i] = tone.r;
-      colors[i + 1] = tone.g;
-      colors[i + 2] = tone.b;
+    const positions = body.attributes.position;
+    const colors = new Float32Array(positions.count * 3);
+    for (let i = 0; i < positions.count; i++) {
+      const lift = FACADES.grounding + (1 - FACADES.grounding) * Math.min(1, positions.getY(i) / block.height);
+      colors[i * 3] = tone.r * lift;
+      colors[i * 3 + 1] = tone.g * lift;
+      colors[i * 3 + 2] = tone.b * lift;
     }
     body.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     bodyParts.push(body);

@@ -29,8 +29,8 @@ export function makeBump(canvas) {
 }
 
 export const SKY_COLORS = {
-  zenith: '#26405c',
-  upper: '#7e93a4',
+  zenith: '#1f3a55',
+  upper: '#6f8a9e',
   band: '#c8a67e',
   horizon: '#f2c88e',
   glow: '#ffedc1',
@@ -50,9 +50,9 @@ export const SKY = {
   width: 1024,
   height: 512,
   glowX: 0.66,
-  glowY: 0.52,
-  discRadius: 0.028,
-  haloRadius: 0.2,
+  glowY: 0.4,
+  discRadius: 0.03,
+  haloRadius: 0.11,
   streakCount: 14,
   puffCount: 7,
 };
