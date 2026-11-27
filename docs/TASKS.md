@@ -14,13 +14,17 @@ Each task has an owner-ready scope, files touched, and **acceptance criteria (AC
 - `tsc --noEmit` and `vitest run` pass; `layout.js` exports SHOP/ZONES/OBSTACLES/CAMERA_PRESETS and OBSTACLES values equal the spec table exactly.
 - **Golden:** screenshot shows a lit brick building on cobblestone ground, correct hue, no clipping.
 
-## M1 — Architecture & Culture Layer
+## M1 — Architecture & Culture Layer ✅ **DONE (2026-11-27, branch `milestone/m1-architecture-culture`, PR #4)**
 **Scope:** `world/architecture.js` (ankhi jhyal, thaam, jasta pali awning, pedi, shutter housing, pasal board), `world/culture.js` (sayapatri toran, flickering diyo, lungta wind, rooftop flag), Devanagari pasal board texture.
 **AC:**
 - Shop opens on two perpendicular sides per the four-zone blueprint.
 - Lungta flags animate (procedural wind sine); diyo flickers via material/point-light intensity noise.
 - Devanagari on the board renders conjuncts correctly.
 - **Golden:** screenshot matches the ethnographic spec table element-by-element.
+
+### M1.5 — Culture Polish & Control (2026-11-27, branch `milestone/m1-culture-polish`)
+**Delivered:** `world/mandala.js` (aripana threshold mandalas at both entrances — eight-petal lotus, mustard-oil center, rice-flour white, per Newari tradition), `world/atmosphere.js` (tungsten interior fill light, additive light shafts in both open fronts, <500 drifting dust motes, reduced-motion aware), `ui/dpad.js` (on-screen arrow pad + arrow-key control of landing-orbit angle/zoom, ≥56 px targets, SVG chevrons, full dispose), windhorse-print lungta flags (five printed cloths, canonical color order) + second prayer-flag line on the opposite diagonal, toran upgraded with makhamali mix and hanging tassels, `prefers-reduced-motion` collapses wind amplitude, NaN delta guard.
+**Verification:** `tsc --noEmit` green · `vitest` 44/44 green · golden specs (architecture + polish) gate in CI with screenshot artifacts for vision review.
 
 ## M2 — Landing Funnel & Transition
 **Scope:** `ui/landing.js` (status pill, name input, 4 deal chips over live 3D street), `engine/audio.js` (bell chord 528/792/1056 Hz), `engine/cameraRig.js` (orbit at r=9.8, h=3.8; cubic ease-out tween to `[6.8, 2.9, 7.6]` or deal target), greeting toast.
