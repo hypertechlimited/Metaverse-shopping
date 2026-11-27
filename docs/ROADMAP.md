@@ -35,6 +35,17 @@ No native apps, no headset requirement. The metaverse ships in the browser.
 - **Phase A — High-fidelity assets.** Blender → glTF + Draco, < 5 MB total; drop-in per the factory contract above.
 - **Phase P — Nepal payments.** Server-generated Fonepay/eSewa dynamic QR, webhook signature verification, idempotent order confirmation; only after Phase S (needs a server to sign).
 - **Phase X — WebXR / voice.** `THREE.PositionalAudio`, Nepali TTS/LLM for Pasale Dai; only after the prototype is stable on Tier 1 devices.
+- **Phase A+ — WebGPU fast path.** Feature-detected `WebGPURenderer` (three.js dual-renderer) for compute-shader crowd/particle effects. Never a hard dependency: MDN still lists WebGPU as "Limited availability" (no Firefox Linux/Intel-Mac/Android). WebGL2 fallback must stay golden-test-green at all times.
+
+## Long Vision (5-year horizon)
+
+Where this project goes if Phase 0 earns it, in order of dependency:
+
+1. **Real Pasal Network.** From one shop to a federation of Kathmandu Valley retailers on one spatial commerce platform — each pasal an owned instance of the same engine, custom-skinned from a shared token system. Supabase row-level security maps naturally to per-shop tenancy.
+2. **Live multiplayer marketplace.** Real neighbor avatars (Presence/Broadcast from Phase S) become shopping companions and live vendors; Kalimati-style daily price feeds stream into shelf badges.
+3. **Identity & asset portability.** Track the Metaverse Standards Forum's conformance-profile work; keep every asset glTF-exportable so avatars/goods can cross platforms when real interop matures. This is why the zero-network, open-format discipline from Phase 0 is a long-vision asset, not a prototype constraint.
+4. **AR storefront layer.** GeoPose/AR-cloud standards (OGC GeoPose, OSCP) let a customer stand in the actual galli and see the pasal's live stock overlaid — the 3D scene graph and the SKU data model are already the required substrates.
+5. **AI-native retail.** Pasale Dai as a Nepali/English voice LLM agent with real inventory authority (Postgres RPC), turning the NPC from decoration into the primary sales interface for voice-first users.
 
 ## Sequencing Rule
 

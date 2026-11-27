@@ -38,6 +38,15 @@ npx playwright test         # golden tests (only for the milestone's scope)
 
 All three must pass. Golden-test screenshots are reviewed visually against the milestone acceptance criteria in `docs/TASKS.md` — code passing is not enough; the render must be correct.
 
+## AI-Generated Code Discipline
+
+This project is AI-built; published analyses find AI-generated code carries ~1.7× more defects and ~2.74× more security vulnerabilities than human code. Therefore:
+
+- **No network-fetched runtime code.** Three.js is vendored into the repo, pinned, and hash-verified — no CDN import maps without integrity.
+- **No hand-rolled cryptography or HMAC** — payment webhooks (Phase P) use the gateway SDK's verification only.
+- **Small reviewable diffs.** The single most effective defense against confident-but-wrong generated code.
+- Multi-agent execution follows `docs/SWARM-EXECUTION.md`: parallelize reading, serialize writing, verify independently — verification agents never see the implementer's reasoning.
+
 ## Git Discipline
 
 - Branch per task: `vibe/<short-slug>-<taskid>`; never commit to `main` directly.
