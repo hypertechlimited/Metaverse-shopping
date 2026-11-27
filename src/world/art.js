@@ -31,9 +31,9 @@ export function makeBump(canvas) {
 export const SKY_COLORS = {
   zenith: '#1f3a55',
   upper: '#5f7d94',
-  band: '#c98d5e',
-  horizon: '#f0bf82',
-  glow: '#ffe9bd',
+  band: '#b06f42',
+  horizon: '#dda45f',
+  glow: '#f2c377',
   ground: '#7d5238',
   ridgeFar: 'rgba(150, 100, 70, 0.45)',
   ridgeNear: '#5a3a2a',
