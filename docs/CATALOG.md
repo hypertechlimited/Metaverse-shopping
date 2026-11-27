@@ -2,7 +2,7 @@
 
 This file **is** the "17-SKU spec table" referenced by the M3 acceptance criteria in `docs/TASKS.md` and `docs/TESTING.md`. It did not exist in the repo before M3 (it predates the repository, in the original conversation spec); it was authored 2026-11-27 and anchored to the four prices already pinned by the M2 landing deal chips (`src/ui/landing.js` `LANDING_DEALS`). Unit tests in `tests/unit/catalog.test.js` hardcode the prices below — a catalog typo fails parity, this document is the target.
 
-Status: **DRAFT — awaiting maintainer approval before M3 code starts.**
+Status: **APPROVED 2026-11-27 — binding for M3 (maintainer approved execution).**
 
 ---
 
@@ -75,11 +75,14 @@ Decisions:
 - **PATAN100 gate** evaluates on the same pre-discount subtotal: 999 → rejected, 1000 → applied (this is the tested boundary in `docs/TESTING.md`).
 - **Delivery free-at** uses the same subtotal ≥ 1000 threshold — one boundary, two consequences.
 - **Total floor** clamps at ₨ 0 (a pathological all-discount cart can never go negative).
+- **Empty jhola totals ₨ 0** — no delivery fee is charged when nothing was bought.
 - **NAMASTE5** read as 5% (the "5" in the code); **PATAN100** as ₨100 flat (the "100"). If the original spec meant something else, this section is the one place to amend.
 
 ## Integration notes (M3 wiring decisions made here, doc-first)
 
 - **Schema stays `sagarmatha_metaverse_v3`.** The bill's order id is timestamp-derived (`SM-<epochBase36>`), so no schema field is added; a schema bump is a doc-change-first decision for Phase S.
+- **Stock is per-SKU across all of a SKU's variants** (schema-pinned: `stockMap` keys are ids, cart lines carry `vIdx`). The oversell guard sums quantity across every line of the same id; checkout deducts per-SKU sums atomically in one store write.
+- **Rupee rendering:** documents use the ₨ glyph; runtime code renders prices as `रू <n>` (Devanagari, Indian-region grouping) to match the M2 landing convention — `formatRupees()` in `commerce/pricing.js` is the only formatter.
 - **Thumbnails:** the `art key` column names a draw function; `main.js` (which may import `world/`) maps key → `makeArt(...).toDataURL()` and passes an `imageFor(skuId)` accessor into `ui/catalogDrawer.js` — `commerce/` stays pure and `ui/` never imports `world/` (ARCHITECTURE import rules hold).
 - **Landing chips** refactor to read prices from `catalog.js` in M3 (single source of truth; a unit test asserts chip price ≡ catalog price).
 - **Inspector in M3 is DOM-only** (opened from the catalog drawer). The raycast → inspector wiring is M4, per `TASKS.md` scope split.
