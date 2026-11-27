@@ -58,9 +58,8 @@ test('golden commerce — oversell guard rejects above stock with a toast', asyn
   await row.locator('.catalog-add').click();
   await expect(row.locator('.catalog-qty')).toHaveText('1');
   await row.locator('.catalog-step:last-child').click();
-  await expect(row.locator('.catalog-qty')).toHaveText('2');
-  await row.locator('.catalog-step:last-child').click();
   await expect(page.locator('.toast')).toContainText('स्टक सकियो');
-  await expect(row.locator('.catalog-qty')).toHaveText('2');
+  await expect(row.locator('.catalog-qty')).toHaveText('1');
+  await expect(page.locator('.hud-cart-badge')).toHaveText('1');
   expect(errors).toEqual([]);
 });
