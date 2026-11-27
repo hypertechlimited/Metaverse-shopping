@@ -1,0 +1,57 @@
+:root {
+  --brick: #8f3b26;
+  --timber: #452719;
+  --zinc: #0369a1;
+  --teal: #0f766e;
+  --crimson: #991b1b;
+  --gold: #fbbf24;
+  --scrim: rgba(20, 12, 8, 0.55);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: system-ui, sans-serif;
+  background: #1a120c;
+}
+
+#scene {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+#hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+#webgl-fallback {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--timber);
+}
+
+#webgl-fallback[hidden] { display: none; }
+
+.fallback-card {
+  max-width: 26rem;
+  padding: 2rem;
+  background: var(--scrim);
+  color: #f5efe6;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.fallback-card h1 { font-size: 1.5rem; margin: 0 0 1rem; }
