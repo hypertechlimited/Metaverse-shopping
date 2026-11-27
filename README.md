@@ -3,6 +3,9 @@
 A Nepali corner retail shop (*Kirana Pasal*) as a zero-reload WebGL metaverse prototype.
 Corner of a *galli* intersection, Mangal Bazar, Patan, Lalitpur.
 
+**Live on GitHub Pages:** [https://hypertechlimited.github.io/Metaverse-shopping/](https://hypertechlimited.github.io/Metaverse-shopping/)
+(automatic deploy on every merge to `main` — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md))
+
 ## What This Is
 
 A production-grade **prototype** — not a toy demo — of a spatial commerce experience:
@@ -42,6 +45,7 @@ ES modules + import maps require HTTP — `file://` will not work.
 | [docs/GUIDELINES.md](docs/GUIDELINES.md) | Coding rules, design rules, performance budgets |
 | [docs/TASKS.md](docs/TASKS.md) | Milestone breakdown M0–M5 with acceptance criteria |
 | [docs/TESTING.md](docs/TESTING.md) | Golden test protocol and verification gates |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | GitHub Pages deploy workflow, base-path and payload rules |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Challenged roadmap, device matrix, Supabase phase, long vision |
 | [docs/RESEARCH-GAPS.md](docs/RESEARCH-GAPS.md) | Second-pass research: WebGPU, storage, INP, security, i18n, XAUR |
 | [docs/SWARM-EXECUTION.md](docs/SWARM-EXECUTION.md) | Multi-agent (swarm) execution model and roles |

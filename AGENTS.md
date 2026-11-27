@@ -57,6 +57,7 @@ These rules override any default workflow habit. They are permanent.
 4. **CI gates every PR.** Every PR runs the GitHub Actions workflow (type check → unit tests → Playwright golden tests for the web pages). A PR is mergeable only when **every check is green**.
 5. **Fix until green, then ask.** If any check fails, fix the root cause and re-run — iterating entirely inside the sandbox — until green. Only then ask the user for push/merge approval. Never merge red.
 6. **Product focus order:** inventory management and checkout correctness are the core; product items UI/UX is the second priority; 3D asset quality serves both. Feature work is sequenced by that order.
+7. **Deploys are automatic on merge to `main`** (GitHub Pages via Actions) — the maintainer merges PRs; the agent never pushes to `main`. All runtime paths stay relative for the Pages subpath; see `docs/DEPLOYMENT.md`.
 
 ## Git Discipline
 
