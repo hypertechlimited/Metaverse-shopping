@@ -19,7 +19,7 @@ jobs:
       - run: npm run test:unit
       - run: npm run test:golden
       - uses: actions/upload-artifact@v4
-        if: failure()
         with:
-          name: golden-artifacts
+          name: golden-screenshots
           path: test-results/
+          if-no-files-found: ignore
