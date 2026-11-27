@@ -26,10 +26,23 @@ export function directionVector(direction) {
   return { ...vector };
 }
 
+export const DRAG = { anglePerPixel: 0.006, radiusPerPixel: 0.014 };
+
 /** @param {number} radius @returns {number} */
 export function clampOrbitRadius(radius) {
   if (Number.isNaN(radius)) return DPAD.minRadius;
   return Math.min(DPAD.maxRadius, Math.max(DPAD.minRadius, radius));
+}
+
+/**
+ * Pointer-drag orbit mapping: horizontal drag rotates, vertical drag zooms.
+ * @param {{ angle: number, radius: number }} orbit @param {number} dx @param {number} dy @returns {{ angle: number, radius: number }}
+ */
+export function dragOrbit(orbit, dx, dy) {
+  return {
+    angle: orbit.angle - dx * DRAG.anglePerPixel,
+    radius: clampOrbitRadius(orbit.radius + dy * DRAG.radiusPerPixel),
+  };
 }
 
 /** @param {KeyboardEvent} event @returns {Direction | null} */

@@ -1,17 +1,20 @@
 import * as THREE from 'three';
 import { createTimestep } from './engine/loop.js';
-import { createPointerGuard, observeResize } from './engine/input.js';
+import { createPointerGuard, createDragStream, observeResize } from './engine/input.js';
+import { createPostChain } from './engine/post.js';
 import { createStorage } from './engine/storage.js';
 import { createStore } from './engine/store.js';
 import { createCameraRig } from './engine/cameraRig.js';
 import { createBell } from './engine/audio.js';
-import { OBSTACLES, LANDING_ORBIT, ENTER_POSITION, CAMERA_PRESETS } from './world/layout.js';
-import { makeArt, makeTexture, makeBump, drawBrick, drawBrickBump, drawCobble, drawCobbleBump } from './world/art.js';
+import { OBSTACLES, SHELL, LANDING_ORBIT, ENTER_POSITION, CAMERA_PRESETS } from './world/layout.js';
+import { makeArt, makeTexture, makeBump, drawBrick, drawBrickBump, drawBrickRoughness, drawCobble, drawCobbleBump, drawCobbleRoughness } from './world/art.js';
+import { buildTheme } from './world/theme.js';
 import { buildArchitecture } from './world/architecture.js';
 import { buildCulture } from './world/culture.js';
 import { buildAripana } from './world/mandala.js';
 import { buildAtmosphere } from './world/atmosphere.js';
-import { createDpad, createKeyboardControl, clampOrbitRadius, DPAD, directionVector } from './ui/dpad.js';
+import { buildProps } from './world/props.js';
+import { createDpad, createKeyboardControl, dragOrbit, clampOrbitRadius, DPAD, directionVector } from './ui/dpad.js';
 import { createLandingOverlay } from './ui/landing.js';
 import { createToast } from './ui/toast.js';
 
@@ -29,21 +32,25 @@ function showFallback() {
 function buildShell(scene, renderer) {
   const brickMap = makeTexture(makeArt(256, 256, drawBrick), renderer);
   const brickBump = makeBump(makeArt(256, 256, drawBrickBump));
+  const brickRoughness = makeBump(makeArt(256, 256, drawBrickRoughness));
   const brickMaterial = new THREE.MeshStandardMaterial({
     map: brickMap,
     bumpMap: brickBump,
-    bumpScale: 0.6,
-    roughness: 0.92,
+    bumpScale: 0.45,
+    roughnessMap: brickRoughness,
+    roughness: 1.0,
     metalness: 0,
   });
 
   const cobbleMap = makeTexture(makeArt(512, 512, drawCobble), renderer);
   const cobbleBump = makeBump(makeArt(512, 512, drawCobbleBump));
+  const cobbleRoughness = makeBump(makeArt(512, 512, drawCobbleRoughness));
   const cobbleMaterial = new THREE.MeshStandardMaterial({
     map: cobbleMap,
     bumpMap: cobbleBump,
     bumpScale: 0.5,
-    roughness: 0.95,
+    roughnessMap: cobbleRoughness,
+    roughness: 1.0,
     metalness: 0,
   });
 
@@ -59,7 +66,7 @@ function buildShell(scene, renderer) {
     const width = box.maxX - box.minX;
     const depth = box.maxZ - box.minZ;
     const isWall = box.name.includes('Wall');
-    const height = isWall ? 3.2 : 1.0;
+    const height = isWall ? SHELL.wallHeight : SHELL.propHeight;
     const centerX = (box.minX + box.maxX) / 2;
     const centerZ = (box.minZ + box.maxZ) / 2;
     const mesh = new THREE.Mesh(
@@ -73,22 +80,6 @@ function buildShell(scene, renderer) {
   }
 
   cobbleMap.repeat.set(8, 8);
-}
-
-/** @param {THREE.Scene} scene */
-function buildLighting(scene) {
-  const hemisphere = new THREE.HemisphereLight(0xcfe8ff, 0x8f3b26, 0.55);
-  scene.add(hemisphere);
-
-  const sun = new THREE.DirectionalLight(0xffd9a0, 2.2);
-  sun.position.set(8, 10, 6);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.left = -12;
-  sun.shadow.camera.right = 12;
-  sun.shadow.camera.top = 12;
-  sun.shadow.camera.bottom = -12;
-  scene.add(sun);
 }
 
 /**
@@ -116,22 +107,33 @@ function boot() {
     renderer.setAnimationLoop(null);
   });
   canvas.addEventListener('webglcontextrestored', () => {
+    mountPost();
     if (frameRef.current) renderer.setAnimationLoop(frameRef.current);
   });
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x9fb8c8);
-  scene.fog = new THREE.FogExp2(0x9fb8c8, 0.028);
 
   const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
 
-  buildLighting(scene);
+  const theme = buildTheme(scene, renderer);
   buildShell(scene, renderer);
   buildArchitecture(scene, renderer);
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const culture = buildCulture(scene, renderer, { reducedMotion });
   buildAripana(scene, renderer);
   const atmosphere = buildAtmosphere(scene, renderer, { reducedMotion });
+  buildProps(scene, renderer);
+
+  /** @type {ReturnType<typeof createPostChain>} */
+  let postChain = null;
+  const mountPost = () => {
+    if (postChain) postChain.dispose();
+    postChain = createPostChain(renderer, scene, camera, {
+      width: window.innerWidth,
+      height: window.innerHeight,
+    });
+  };
+  mountPost();
 
   const storage = createStorage();
   const persisted = /** @type {{ visitorName: string, stockMap: Record<string, number>, cartArr: Array<{ id: string, vIdx: number, qty: number }> }} */ (storage.load());
@@ -170,6 +172,12 @@ function boot() {
   };
   const dpad = createDpad(body, { onDirection: applyDirection });
   const keyboard = createKeyboardControl(window, { onDirection: applyDirection });
+  const drag = createDragStream(canvas, {
+    onDrag: (dx, dy) => {
+      if (rig.getMode() !== 'orbit') return;
+      rig.setOrbit(dragOrbit(rig.getOrbit(), dx, dy));
+    },
+  });
 
   /**
    * @param {string} name
@@ -189,6 +197,7 @@ function boot() {
     });
     dpad.dispose();
     keyboard.dispose();
+    drag.dispose();
     rig.beginTransition(/** @type {[number, number, number]} */ (target), presetEntry?.lookAt);
     void bell.play().then((audioState) => {
       body.dataset.audio = audioState;
@@ -204,9 +213,12 @@ function boot() {
   const releaseControls = () => {
     dpad.dispose();
     keyboard.dispose();
+    drag.dispose();
     guard.dispose();
     landing.dispose();
     bell.dispose();
+    theme.dispose();
+    if (postChain) postChain.dispose();
   };
   window.addEventListener('pagehide', releaseControls, { once: true });
 
@@ -214,6 +226,7 @@ function boot() {
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
+    if (postChain) postChain.setSize(width, height);
   });
 
   let lastCamX = Number.NaN;
@@ -245,7 +258,8 @@ function boot() {
     atmosphere.update(timeMs / 1000);
     rig.render();
     if (rig.getMode() !== 'orbit') publishCamera();
-    renderer.render(scene, camera);
+    if (postChain) postChain.render();
+    else renderer.render(scene, camera);
   }
 
   const frame = createTimestep({ update, render });

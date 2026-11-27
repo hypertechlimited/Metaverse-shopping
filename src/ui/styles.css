@@ -1,3 +1,11 @@
+@font-face {
+  font-family: 'Bitter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/vendor/fonts/bitter-latin-variable.woff2') format('woff2');
+}
+
 :root {
   --brick: #8f3b26;
   --timber: #452719;
@@ -6,6 +14,8 @@
   --crimson: #991b1b;
   --gold: #fbbf24;
   --scrim: rgba(20, 12, 8, 0.55);
+  --font-display: 'Bitter', Georgia, 'Times New Roman', serif;
+  --micro-ease: 0.16s ease-out;
 }
 
 * { box-sizing: border-box; }
@@ -32,6 +42,23 @@ html, body {
   position: fixed;
   inset: 0;
   pointer-events: none;
+}
+
+#film {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  background: radial-gradient(ellipse 120% 90% at 50% 42%, rgba(20, 10, 5, 0) 55%, rgba(20, 10, 5, 0.3) 100%);
+}
+
+#film::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
 }
 
 #webgl-fallback {
@@ -154,6 +181,7 @@ html, body {
   font-size: 40px;
   line-height: 1.15;
   font-weight: 700;
+  font-family: 'Noto Sans Devanagari', var(--font-display);
   animation: landing-rise 0.2s 0.048s ease-out both;
 }
 
@@ -162,6 +190,7 @@ html, body {
   font-size: 16px;
   line-height: 1.5;
   color: #e5d9c9;
+  font-family: var(--font-display);
   animation: landing-rise 0.2s 0.096s ease-out both;
 }
 
@@ -214,12 +243,14 @@ html, body {
   background: rgba(15, 118, 110, 0.55);
   color: #f5efe6;
   font-size: 14px;
-  font-family: inherit;
+  font-family: var(--font-display);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  transition: background var(--micro-ease), transform var(--micro-ease);
 }
 
-.deal-chip:hover { background: rgba(15, 118, 110, 0.78); }
+.deal-chip:hover { background: rgba(15, 118, 110, 0.78); transform: translateY(-1px); }
+.deal-chip:active { transform: translateY(0); }
 .deal-chip:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 .deal-price { font-size: 12px; color: var(--gold); }
@@ -232,13 +263,15 @@ html, body {
   background: var(--brick);
   color: #f5efe6;
   font-size: 20px;
-  font-family: inherit;
+  font-family: var(--font-display);
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  transition: background var(--micro-ease), transform var(--micro-ease), box-shadow var(--micro-ease);
 }
 
-.landing-enter:hover { background: #a84a31; }
+.landing-enter:hover { background: #a84a31; box-shadow: 0 6px 18px rgba(143, 59, 38, 0.4); }
+.landing-enter:active { transform: scale(0.985); }
 .landing-enter:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 .landing-hint {
@@ -277,4 +310,6 @@ html, body {
   .landing, .landing-pill, .landing-title, .landing-sub, .landing-form, .landing-hint, .toast {
     animation: none;
   }
+  .deal-chip, .landing-enter { transition: none; }
+  #film::after { display: none; }
 }

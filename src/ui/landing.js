@@ -87,6 +87,7 @@ export function createLandingOverlay(host, { initialName = '', onEnter }) {
     const item = document.createElement('li');
     const chip = document.createElement('button');
     chip.type = 'button';
+    chip.type = 'button';
     chip.className = 'deal-chip';
     chip.dataset.deal = deal.id;
     chip.setAttribute('aria-label', `${deal.name}, ${deal.price} — enter the pasal at this deal`);
@@ -145,8 +146,9 @@ export function createLandingOverlay(host, { initialName = '', onEnter }) {
 
   function onChipClick(/** @type {Event} */ event) {
     const target = /** @type {HTMLElement} */ (event.target);
-    if (!(target instanceof HTMLButtonElement)) return;
-    enter(presetFor(target.dataset.deal ?? ''));
+    const chip = target instanceof Element ? target.closest('.deal-chip') : null;
+    if (!chip) return;
+    enter(presetFor(/** @type {HTMLElement} */ (chip).dataset.deal ?? ''));
   }
 
   form.addEventListener('submit', onSubmit);

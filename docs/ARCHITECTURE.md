@@ -2,7 +2,7 @@
 
 ## Design Principles
 
-1. **Own engine on Three.js.** Three.js is the renderer only. The engine layer (`src/engine/`) provides loop, input, collision, audio, storage, camera rig — no `three/examples` addon sprawl, no external game engine.
+1. **Own engine on Three.js.** Three.js is the renderer only. The engine layer (`src/engine/`) provides loop, input, collision, audio, storage, camera rig — no external game engine. The `three/examples` addon surface is **sanctioned as a closed, vendored set only** (M2.5): `postprocessing/` (EffectComposer, RenderPass, UnrealBloomPass, OutputPass + Pass/ShaderPass/MaskPass dependency closure), `shaders/` (CopyShader, LuminosityHighPassShader, OutputShader), and `utils/BufferGeometryUtils.js` — copied into `vendor/three/addons/`, SHA-256 recorded in `TASKS.md`, served via the `three/addons/` import map. Adding any further addon file is a doc-change-first decision, never an import-time convenience.
 2. **Single canvas, two modes.** The whole app is one WebGL canvas. `storeEntered` (a store flag, not a DOM state) switches landing orbit vs. first-person exploration. DOM overlays sit above the canvas and never reload the page.
 3. **One store, many subscribers.** The 2D HUD, the catalog drawer, the 3D shelf meshes, and the hover tooltips all read from one state store. A purchase updates once; every subscriber refreshes from the same event.
 4. **Geometry truth lives in `layout.js`.** Shop dimensions, rack positions, counter bounds, obstacle AABBs, camera presets — all exported from one module and consumed by world builders and collision alike.

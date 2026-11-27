@@ -2,6 +2,9 @@ export const PLAYER_RADIUS = 0.45;
 
 export const STREET = { minX: -14, maxX: 14, minZ: -14, maxZ: 14 };
 
+/** @type {{ wallHeight: number, propHeight: number }} */
+export const SHELL = { wallHeight: 3.2, propHeight: 1.0 };
+
 /** @type {{ radius: number, height: number, target: [number, number, number] }} */
 export const LANDING_ORBIT = { radius: 9.8, height: 3.8, target: [0, 1.2, 0] };
 

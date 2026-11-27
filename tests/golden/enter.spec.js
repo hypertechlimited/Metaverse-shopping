@@ -8,6 +8,7 @@ test('golden enter', async ({ page }) => {
   });
   page.on('pageerror', (error) => errors.push(String(error)));
 
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   await expect(page.locator('.landing')).toBeVisible();
 
@@ -43,6 +44,7 @@ test('golden enter via deal chip flies to the deal shelf', async ({ page }) => {
   const errors = [];
   page.on('pageerror', (error) => errors.push(String(error)));
 
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   await page.click('.deal-chip[data-deal="ilam-tea-250g"]');
 
