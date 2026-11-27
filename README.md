@@ -45,4 +45,6 @@ ES modules + import maps require HTTP — `file://` will not work.
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Challenged roadmap, device matrix, Supabase phase, long vision |
 | [docs/RESEARCH-GAPS.md](docs/RESEARCH-GAPS.md) | Second-pass research: WebGPU, storage, INP, security, i18n, XAUR |
 | [docs/SWARM-EXECUTION.md](docs/SWARM-EXECUTION.md) | Multi-agent (swarm) execution model and roles |
+| [design/ASSET-PIPELINE.md](design/ASSET-PIPELINE.md) | Photoreal reference mockups + in-engine cinematic realism plan |
+| [design/references/REFERENCE-PROMPTS.md](design/references/REFERENCE-PROMPTS.md) | Versioned image-generation prompt library |
 | [AGENTS.md](AGENTS.md) | Rules for contributors and coding agents |
