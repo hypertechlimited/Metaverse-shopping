@@ -836,3 +836,82 @@ body[data-mode="landing"] .hud-commerce { display: none; }
   .hud-cart, .catalog-add, .catalog-step, .catalog-checkout,
   .inspector-add, .inspector-variant, .bill-print, .bill-close { transition: none; }
 }
+
+/* --- M4 interaction: hover tip, preset bar, explore d-pad --- */
+
+.hover-tip {
+  position: fixed;
+  z-index: 30;
+  max-width: 260px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(20, 12, 8, 0.82);
+  box-shadow: var(--shadow-layered), inset 0 0 0 1px rgba(251, 191, 36, 0.35);
+  color: var(--parchment);
+  pointer-events: none;
+}
+
+.hover-tip[hidden] { display: none; }
+
+.hover-tip-np {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.hover-tip-en {
+  margin: 2px 0 0;
+  font-size: 14px;
+  color: var(--parchment);
+}
+
+.hover-tip-meta {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--parchment-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.preset-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px;
+  border-radius: 14px;
+  background: rgba(20, 12, 8, 0.62);
+  box-shadow: var(--shadow-layered);
+}
+
+body[data-mode="landing"] .preset-bar { display: none; }
+
+.preset-btn {
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--parchment);
+  font-size: 14px;
+  line-height: 1;
+  padding: 10px 14px;
+  min-height: 44px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background var(--micro-ease), transform var(--micro-ease);
+}
+
+.preset-btn:hover { background: rgba(15, 118, 110, 0.78); transform: translateY(-1px); }
+.preset-btn:active { transform: translateY(0); }
+.preset-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.preset-tour { color: var(--gold); font-weight: 700; }
+.preset-tour[aria-pressed="true"] { background: rgba(153, 27, 27, 0.75); color: var(--parchment); }
+
+@media (max-width: 640px) {
+  .preset-bar { max-width: calc(100vw - 24px); flex-wrap: wrap; justify-content: center; }
+  .preset-btn { padding: 10px 10px; }
+}

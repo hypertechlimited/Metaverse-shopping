@@ -52,7 +52,7 @@ function lerp3(a, b, u) {
  *   getMode: () => 'orbit' | 'transition' | 'settled',
  *   getOrbit: () => { angle: number, radius: number },
  *   setOrbit: (orbit: { angle: number, radius: number }) => void,
- *   beginTransition: (toPosition: Vec3, toLookAt?: Vec3) => boolean,
+ *   beginTransition: (toPosition: Vec3, toLookAt?: Vec3, origin?: { position: Vec3, lookAt: Vec3 }) => boolean,
  *   update: (fixedDelta: number) => void,
  *   render: () => void,
  * }}
@@ -101,17 +101,27 @@ export function createCameraRig(options) {
   /**
    * @param {Vec3} position
    * @param {Vec3} [lookAt]
-   * @returns {boolean} false when the rig is not in orbit mode
+   * @param {{ position: Vec3, lookAt: Vec3 }} [origin] current camera pose when
+   *        leaving settled mode (preset navigation); ignored from orbit
+   * @returns {boolean} false when the rig is mid-transition
    */
-  function beginTransition(position, lookAt = orbitTarget) {
-    if (mode !== RIG_MODES.ORBIT) return false;
+  function beginTransition(position, lookAt = orbitTarget, origin) {
+    if (mode === RIG_MODES.TRANSITION) return false;
     if (!Array.isArray(position) || position.length !== 3) {
       throw new Error('beginTransition requires a 3-element position');
     }
     toPosition = [...position];
     toLookAt = [...(lookAt ?? orbitTarget)];
-    fromPosition = orbitPosition();
-    fromLookAt = [...orbitTarget];
+    if (mode === RIG_MODES.ORBIT) {
+      fromPosition = orbitPosition();
+      fromLookAt = [...orbitTarget];
+    } else if (origin) {
+      fromPosition = [...origin.position];
+      fromLookAt = [...origin.lookAt];
+    } else {
+      fromPosition = [...toPosition];
+      fromLookAt = [...toLookAt];
+    }
     if (reducedMotion) {
       mode = RIG_MODES.SETTLED;
       elapsedMs = tweenDurationMs;

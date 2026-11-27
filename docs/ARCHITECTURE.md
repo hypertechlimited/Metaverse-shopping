@@ -48,10 +48,13 @@ Atomicity rule: validation and deduction happen in one `cart.checkout()` call th
 `renderer.setAnimationLoop(time => …)`; delta clamped to 0.1 s; fixed-step update (60 Hz) for movement/collision, per-frame render. Tab-blur → loop auto-pauses (browser behavior), no time-jumps because of the clamp.
 
 ### world/layout.js
-Exports: `SHOP` (dimensions), `ZONES` (four merchandising zones), `OBSTACLES` (5 AABBs), `CAMERA_PRESETS`, spawn point. Collision `radius = 0.45` is a constant here.
+Exports: `SHOP` (dimensions), `ZONES` (four merchandising zones with top-surface heights), `PRODUCT_SPOTS` (all 17 SKU positions, parity-tested against the catalog), `NPC_PATHS` + `PASALE_DAI_POSITION`, `OBSTACLES` (5 AABBs), `CAMERA_PRESETS`, `STREET`, spawn point. Collision `radius = 0.45` is a constant here.
 
 ### Zero-mutation picking
-`input.js` tracks `pointerDownPos`; pointer travel > 6 px cancels selection (click-vs-drag guard). `getTargetRoot()` walks `obj.parent` until `userData.product` or `userData.isNpc` so multi-mesh product groups act as one entity. Highlight = one reusable `THREE.BoxHelper.setFromObject(root)`.
+`input.js` tracks `pointerDownPos`; pointer travel > 6 px cancels selection (click-vs-drag guard). Each SKU gets one invisible proxy box (`MeshBasicMaterial({ visible: false })` — the vendored raycaster tests `layers`, not `visible`, so proxies stay pickable) tagged `userData.product = skuId`; NPCs get `userData.isNpc`/`npcId` proxies. Proxies are picked before anything else, so each SKU is one entity regardless of how its merged geometry is packed. Highlight = one reusable `THREE.BoxHelper.setFromObject(proxy)` in the gold token — never material mutation.
+
+### Player & tour
+`engine/collision.js` is pure circle-vs-AABB push-out (2 passes for corners) with sub-stepped moves (step ≤ radius/2, no tunneling) and street clamps. `engine/player.js` holds first-person state (position, yaw, eye height) and applies to the camera via the same duck-typed `apply` contract as `cameraRig`; preset flights hand off through `syncFrom`, which keeps the preset's eye height until the visitor actually moves (the Overview aerial pose survives until you walk). `engine/tour.js` cycles preset names with a dwell, requires the rig settled before advancing, and any drag cancels it.
 
 ### Procedural art (`makeArt`)
 `makeArt(w, h, drawFn)` returns a canvas; `makeTexture(canvas)` binds it as `THREE.CanvasTexture` (sRGB, anisotropy-clamped) for 3D, and `canvas.toDataURL()` feeds the identical image into catalog drawer, inspector modal, cart rows, and the printable bill. One draw function, two consumers, zero network art.

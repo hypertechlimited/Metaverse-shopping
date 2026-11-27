@@ -28,7 +28,7 @@ test('golden enter', async ({ page }) => {
     y: parseFloat(document.body.dataset.camY ?? ''),
     z: parseFloat(document.body.dataset.camZ ?? ''),
   }));
-  const distance = Math.hypot(position.x - 6.8, position.y - 2.9, position.z - 7.6);
+  const distance = Math.hypot(position.x - 6.8, position.y - 1.6, position.z - 7.6);
   expect(distance).toBeLessThan(0.5);
 
   const audioState = await page.evaluate(() => document.body.dataset.audio);
