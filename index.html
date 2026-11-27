@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sagarmatha Metaverse Corner Kirana Pasal</title>
+  <link rel="stylesheet" href="src/ui/styles.css">
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three/three.module.js" } }
+  </script>
+</head>
+<body>
+  <canvas id="scene" aria-label="Sagarmatha corner pasal, 3D street view"></canvas>
+  <div id="hud"></div>
+  <div id="webgl-fallback" hidden>
+    <div class="fallback-card">
+      <h1>सगरमाथा कर्नर पसल</h1>
+      <p>Your browser cannot display the 3D shop because WebGL2 is unavailable.</p>
+      <p>The full catalog remains available as a plain list in a future update.</p>
+    </div>
+  </div>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
