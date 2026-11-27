@@ -55,6 +55,14 @@ Each task has an owner-ready scope, files touched, and **acceptance criteria (AC
 - Print stylesheet hides all HUD; receipt is clean white.
 - **Golden:** screenshot of catalog drawer + printed receipt.
 
+## M3.5 — Premium Pass (2026-11-27, branch `milestone/m3.5-premium-pass`)
+**Scope:** flagship design upgrade per `docs/PREMIUM-PASS.md` — R1 authored golden-hour sky (sun disc + layered halo, dual valley-ridge silhouettes, stratified cloud bands; feeds background + PMREM IBL), R2 galli depth stage (`world/facades.js`: 8 hand-authored neighbor masses, merged bodies/windows/roofs — 3 draw calls, ≥11.5 units clear of the landing orbit), R3 physical hero materials (jars get clearcoat glaze, chiya glass gets real transmission `thickness`/`ior`), R4 instanced ground scatter (84 pebbles + 48 marigold petals in 2 draw calls, obstacle/mandala-safe), R5 IBL re-grade for the r187 energy-preserving pipeline (env 0.62, hemisphere 0.7, exposure 1.08, fog 0.02), R6 authored thumbnail finish pass (sheen + grounding shade via `source-atop`), R7 UI premium treatment (ink-deep drawer, layered shadows, gold hairlines, tabular numerals, eyebrow zones).
+**AC:**
+- Facades: 6–8 masses, deterministic, ≥11.5 units from origin, ≤26 in the fog read, no obstacle/self overlap.
+- Scatter deterministic, obstacle/mandala-safe, named-constant counts; props budget 9.
+- Grade bounds: exposure ∈ (0.8, 1.2], env ∈ [0.5, 0.8], fog < 0.028, 2048² shadow unchanged.
+- Draw-call ledger ~68 ≤ 80; payload delta zero; no new runtime deps.
+
 ## M4 — Interaction & Presence
 **Scope:** raycast hover + zero-mutation `BoxHelper`, product click→inspector, `engine/collision.js` (5 AABBs, radius 0.45, street clamps), 6 camera presets, guided auto-tour, mobile d-pad, `world/npc.js` (Pasale Dai greeting by name, 2 neighbors with nametags + bobbing), `world/products.js` (all 17 SKU meshes with multi-mesh groups).
 **AC:**

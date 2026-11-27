@@ -7,6 +7,34 @@
 
 /** @typedef {'sack' | 'pouch' | 'bottle' | 'pot' | 'bar' | 'bundle' | 'box'} ThumbShape */
 
+export const THUMB_FINISH = {
+  sheen: 'rgba(255, 246, 226, 0.22)',
+  sheenFade: 'rgba(255, 246, 226, 0)',
+  ground: 'rgba(30, 20, 12, 0.16)',
+  groundFade: 'rgba(30, 20, 12, 0)',
+  seam: 'rgba(30, 20, 12, 0.3)',
+};
+
+/**
+ * Authored finish: top-left sheen and bottom grounding shade, clipped to the
+ * already-drawn silhouette via source-atop.
+ * @param {CanvasRenderingContext2D} ctx @param {number} w @param {number} h
+ */
+function drawFinish(ctx, w, h) {
+  ctx.globalCompositeOperation = 'source-atop';
+  const sheen = ctx.createRadialGradient(w * 0.34, h * 0.28, 2, w * 0.34, h * 0.28, w * 0.42);
+  sheen.addColorStop(0, THUMB_FINISH.sheen);
+  sheen.addColorStop(1, THUMB_FINISH.sheenFade);
+  ctx.fillStyle = sheen;
+  ctx.fillRect(0, 0, w, h);
+  const shade = ctx.createLinearGradient(0, h * 0.6, 0, h);
+  shade.addColorStop(0, THUMB_FINISH.groundFade);
+  shade.addColorStop(1, THUMB_FINISH.ground);
+  ctx.fillStyle = shade;
+  ctx.fillRect(0, h * 0.6, w, h * 0.4);
+  ctx.globalCompositeOperation = 'source-over';
+}
+
 /** @typedef {{ shape: ThumbShape, body: string, accent: string }} ThumbSpec */
 
 /** @type {Record<string, ThumbSpec>} */
@@ -133,6 +161,7 @@ export function drawThumb(ctx, w, h, key) {
     ctx.fillRect(cx - w * 0.32, h * 0.46, w * 0.64, h * 0.12);
   }
 
+  drawFinish(ctx, w, h);
   ctx.restore();
 }
 

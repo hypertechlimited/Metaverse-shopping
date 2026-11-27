@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { THEME, shadowCoversShop, contactDecals } from '../../src/world/theme.js';
 import { OBSTACLES } from '../../src/world/layout.js';
-import { SKY_COLORS, CONTACT_AO } from '../../src/world/art.js';
+import { SKY_COLORS, SKY, SKY_RIDGE_LAYERS, CONTACT_AO } from '../../src/world/art.js';
 
 describe('theme lighting rig', () => {
   it('locks exposure and keeps budgets inside the render plan', () => {
@@ -26,6 +26,22 @@ describe('theme lighting rig', () => {
 
   it('softens fog density below the M0 baseline so the sky reads at distance', () => {
     expect(THEME.fogDensity).toBeLessThan(0.028);
+  });
+
+  it('re-grades IBL fill for the r187 energy-preserving pipeline', () => {
+    expect(THEME.environmentIntensity).toBeGreaterThanOrEqual(0.5);
+    expect(THEME.environmentIntensity).toBeLessThanOrEqual(0.8);
+    expect(THEME.hemisphere.intensity).toBeGreaterThanOrEqual(0.6);
+    expect(THEME.hemisphere.intensity).toBeLessThanOrEqual(0.8);
+  });
+
+  it('authors a sun disc and valley ridges into the equirect sky', () => {
+    expect(SKY.glowX).toBeGreaterThan(0.5);
+    expect(SKY.glowX).toBeLessThan(0.8);
+    expect(SKY.discRadius).toBeLessThan(SKY.haloRadius);
+    expect(SKY_RIDGE_LAYERS.length).toBe(2);
+    expect(SKY.streakCount).toBeGreaterThan(4);
+    expect(SKY.puffCount).toBeGreaterThan(2);
   });
 });
 
