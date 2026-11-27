@@ -30,10 +30,10 @@ export function makeBump(canvas) {
 
 export const SKY_COLORS = {
   zenith: '#1f3a55',
-  upper: '#6f8a9e',
-  band: '#c8a67e',
-  horizon: '#f2c88e',
-  glow: '#ffedc1',
+  upper: '#5f7d94',
+  band: '#c98d5e',
+  horizon: '#f0bf82',
+  glow: '#ffe9bd',
   ground: '#7d5238',
   ridgeFar: 'rgba(150, 100, 70, 0.45)',
   ridgeNear: '#5a3a2a',
@@ -54,7 +54,15 @@ export const SKY = {
   discRadius: 0.03,
   haloRadius: 0.11,
   streakCount: 14,
-  puffCount: 7,
+  puffCount: 9,
+};
+
+export const SKY_CLOUDS = {
+  streakYMin: 0.3,
+  streakYSpread: 0.16,
+  puffYMin: 0.42,
+  puffYSpread: 0.08,
+  puffAlpha: 0.5,
 };
 
 export const SKY_RIDGE_LAYERS = [
@@ -109,7 +117,7 @@ function drawRidges(ctx, w, h) {
 /** @param {CanvasRenderingContext2D} ctx @param {number} w @param {number} h */
 function drawClouds(ctx, w, h) {
   for (let i = 0; i < SKY.streakCount; i++) {
-    const cy = h * (0.12 + hash01(i * 91.7 + 3.3) * 0.24);
+    const cy = h * (SKY_CLOUDS.streakYMin + hash01(i * 91.7 + 3.3) * SKY_CLOUDS.streakYSpread);
     const cx = hash01(i * 47.29 + 8.1) * w;
     const cw = w * (0.08 + hash01(i * 12.9898) * 0.16);
     ctx.fillStyle = SKY_COLORS.streak;
@@ -118,14 +126,51 @@ function drawClouds(ctx, w, h) {
     ctx.fill();
   }
   for (let i = 0; i < SKY.puffCount; i++) {
-    const cy = h * (0.4 + hash01(i * 17.7 + 2.9) * 0.1);
+    const cy = h * (SKY_CLOUDS.puffYMin + hash01(i * 17.7 + 2.9) * SKY_CLOUDS.puffYSpread);
     const cx = hash01(i * 29.3 + 5.5) * w;
     const cw = w * (0.05 + hash01(i * 9.13) * 0.09);
     const puff = ctx.createRadialGradient(cx, cy, 1, cx, cy, cw);
     puff.addColorStop(0, SKY_COLORS.puff);
     puff.addColorStop(1, SKY_COLORS.puffFade);
+    ctx.globalAlpha = SKY_CLOUDS.puffAlpha;
     ctx.fillStyle = puff;
     ctx.fillRect(cx - cw, cy - cw * 0.4, cw * 2, cw * 0.8);
+    ctx.globalAlpha = 1;
+  }
+}
+
+export const PLASTER_COLORS = {
+  base: [214, 196, 172],
+  mottle: [178, 148, 118],
+  stain: 'rgba(94, 62, 40, 0.09)',
+  light: 'rgba(255, 240, 214, 0.1)',
+};
+
+export const PLASTER = { size: 256, blotchCount: 14, streakCount: 10 };
+
+/** @param {CanvasRenderingContext2D} ctx @param {number} w @param {number} h */
+export function drawPlaster(ctx, w, h) {
+  ctx.fillStyle = `rgb(${PLASTER_COLORS.base[0]}, ${PLASTER_COLORS.base[1]}, ${PLASTER_COLORS.base[2]})`;
+  ctx.fillRect(0, 0, w, h);
+  for (let i = 0; i < PLASTER.blotchCount; i++) {
+    const px = hash01(i * 13.7 + 1.9) * w;
+    const py = hash01(i * 71.3 + 4.1) * h;
+    const pr = w * (0.06 + hash01(i * 29.7) * 0.1);
+    const blotch = ctx.createRadialGradient(px, py, 1, px, py, pr);
+    const m = PLASTER_COLORS.mottle;
+    blotch.addColorStop(0, `rgba(${m[0]}, ${m[1]}, ${m[2]}, 0.16)`);
+    blotch.addColorStop(1, `rgba(${m[0]}, ${m[1]}, ${m[2]}, 0)`);
+    ctx.fillStyle = blotch;
+    ctx.fillRect(px - pr, py - pr, pr * 2, pr * 2);
+  }
+  for (let i = 0; i < PLASTER.streakCount; i++) {
+    const px = hash01(i * 53.1 + 7.7) * w;
+    const streakW = 3 + hash01(i * 5.3) * 6;
+    const streakH = h * (0.3 + hash01(i * 17.9) * 0.6);
+    ctx.fillStyle = PLASTER_COLORS.stain;
+    ctx.fillRect(px, 0, streakW, streakH);
+    ctx.fillStyle = PLASTER_COLORS.light;
+    ctx.fillRect(px + streakW, 0, 2, streakH * 0.8);
   }
 }
 

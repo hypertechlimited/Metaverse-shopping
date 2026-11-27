@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { makeArt, makeTexture, drawZinc } from './art.js';
+import { makeArt, makeBump, makeTexture, drawZinc, drawPlaster } from './art.js';
 
 /** @typedef {'north' | 'south' | 'east' | 'west'} FacadeFacing */
 
-/** @type {{ blocks: Array<{ name: string, x: number, z: number, width: number, depth: number, height: number, facing: FacadeFacing }>, window: { width: number, height: number, depth: number, cols: number, rows: number, baseY: number, rowStep: number, margin: number }, grounding: number, roof: { overhang: number, thickness: number, textureSize: number, textureRepeat: number }, colors: { plaster: number, plasterAlt: number, window: number, roofTint: number } }} */
+/** @type {{ plaster: { size: number }, blocks: Array<{ name: string, x: number, z: number, width: number, depth: number, height: number, facing: FacadeFacing }>, window: { width: number, height: number, depth: number, cols: number, rows: number, baseY: number, rowStep: number, margin: number }, grounding: number, roof: { overhang: number, thickness: number, textureSize: number, textureRepeat: number }, colors: { plaster: number, plasterAlt: number, plasterC: number, window: number, roofTint: number } }} */
 export const FACADES = {
+  plaster: { size: 256 },
   blocks: [
     { name: 'North A', x: -10.5, z: -16.8, width: 5.4, depth: 4.2, height: 5.6, facing: 'south' },
     { name: 'North B', x: -4.6, z: -17.4, width: 4.6, depth: 3.6, height: 4.3, facing: 'south' },
@@ -17,9 +18,9 @@ export const FACADES = {
     { name: 'East Far', x: 18.6, z: 8.2, width: 4.8, depth: 4.4, height: 4.6, facing: 'west' },
   ],
   window: { width: 0.7, height: 0.9, depth: 0.06, cols: 3, rows: 2, baseY: 1.4, rowStep: 1.35, margin: 0.55 },
-  grounding: 0.7,
+  grounding: 0.62,
   roof: { overhang: 0.35, thickness: 0.14, textureSize: 256, textureRepeat: 2 },
-  colors: { plaster: 0xc4ad92, plasterAlt: 0xb59a7d, window: 0x241409, roofTint: 0xffffff },
+  colors: { plaster: 0xc9b49a, plasterAlt: 0xb99e82, plasterC: 0xa8866a, window: 0x241409, roofTint: 0xffffff },
 };
 
 /**
@@ -87,6 +88,8 @@ export function buildFacades(scene, renderer) {
   const layout = facadesLayout();
   const toneA = new THREE.Color(FACADES.colors.plaster);
   const toneB = new THREE.Color(FACADES.colors.plasterAlt);
+  const toneC = new THREE.Color(FACADES.colors.plasterC);
+  const tones = [toneA, toneB, toneC];
 
   const bodyParts = [];
   const windowParts = [];
@@ -94,7 +97,7 @@ export function buildFacades(scene, renderer) {
   for (const block of layout) {
     const body = new THREE.BoxGeometry(block.width, block.height, block.depth);
     body.translate(block.x, block.height / 2, block.z);
-    const tone = bodyParts.length % 2 === 0 ? toneA : toneB;
+    const tone = tones[bodyParts.length % tones.length];
     const positions = body.attributes.position;
     const colors = new Float32Array(positions.count * 3);
     for (let i = 0; i < positions.count; i++) {
@@ -115,7 +118,16 @@ export function buildFacades(scene, renderer) {
     roofParts.push(roof);
   }
 
-  const bodyMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 });
+  const plasterMap = makeTexture(makeArt(FACADES.plaster.size, FACADES.plaster.size, drawPlaster), renderer);
+  plasterMap.repeat.set(2, 1);
+  const plasterBump = makeBump(makeArt(FACADES.plaster.size, FACADES.plaster.size, drawPlaster));
+  const bodyMaterial = new THREE.MeshStandardMaterial({
+    map: plasterMap,
+    bumpMap: plasterBump,
+    bumpScale: 0.3,
+    vertexColors: true,
+    roughness: 0.95,
+  });
   const windowMaterial = new THREE.MeshStandardMaterial({ color: FACADES.colors.window, roughness: 0.6 });
   const zincTexture = makeTexture(makeArt(FACADES.roof.textureSize, FACADES.roof.textureSize, drawZinc), renderer);
   zincTexture.repeat.set(FACADES.roof.textureRepeat, FACADES.roof.textureRepeat);
