@@ -3,15 +3,25 @@
  * all over the live 3D street. The scrim does not capture pointers outside the
  * card, so the orbit (d-pad, keyboard) stays live behind the funnel. Deal
  * targets are preset *names* resolved by main.js from `world/layout.js` —
- * this module never hardcodes coordinates.
+ * this module never hardcodes coordinates or prices: ids, names, and prices
+ * come from the catalog (single source of truth, docs/CATALOG.md).
  */
 
-export const LANDING_DEALS = [
-  { id: 'waiwai-5pack', name: 'Wai Wai 5-pack', price: 'रू 95', preset: 'Front Pedi' },
-  { id: 'ilam-tea-250g', name: 'Ilam Tea 250g', price: 'रू 180', preset: 'Counter' },
-  { id: 'gungdi-ghee', name: 'Gungdi Ghee', price: 'रू 420', preset: 'Back Rack' },
-  { id: 'marsyangdi-rice-5kg', name: 'Marsyangdi Rice 5kg', price: 'रू 310', preset: 'Corner' },
+import { getSku } from '../commerce/catalog.js';
+import { formatRupees } from '../commerce/pricing.js';
+
+const LANDING_DEAL_IDS = [
+  { id: 'waiwai-5pack', preset: 'Front Pedi' },
+  { id: 'ilam-tea-250g', preset: 'Counter' },
+  { id: 'gungdi-ghee', preset: 'Back Rack' },
+  { id: 'marsyangdi-rice-5kg', preset: 'Corner' },
 ];
+
+/** @type {Array<{ id: string, name: string, price: string, preset: string }>} */
+export const LANDING_DEALS = LANDING_DEAL_IDS.map(({ id, preset }) => {
+  const sku = getSku(id);
+  return { id, name: sku.nameEn, price: formatRupees(sku.variants[0].price), preset };
+});
 
 export const LANDING = {
   fadeOutMs: 650,
