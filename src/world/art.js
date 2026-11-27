@@ -84,6 +84,25 @@ export function drawCobble(ctx, w, h) {
 export const PASAL_BOARD_TEXT = 'सगरमाथा कर्नर पसल';
 export const PASAL_BOARD_SUBTITLE = 'SAGARMATHA CORNER STORE';
 export const DEVANAGARI_FONT_STACK = "'Noto Sans Devanagari', 'Mangal', 'Nirmala UI', sans-serif";
+export const DEVANAGARI_FONT_FAMILY = 'Noto Sans Devanagari';
+export const DEVANAGARI_FONT_URL_WOFF2 = 'vendor/fonts/noto-sans-devanagari-devanagari-700-normal.woff2';
+export const DEVANAGARI_FONT_URL_WOFF = 'vendor/fonts/noto-sans-devanagari-devanagari-700-normal.woff';
+
+/** Loads the vendored Devanagari font; resolves false when unavailable. @returns {Promise<boolean>} */
+export async function loadDevanagariFont() {
+  if (typeof document === 'undefined' || typeof FontFace === 'undefined') return false;
+  const face = new FontFace(
+    DEVANAGARI_FONT_FAMILY,
+    `url(${DEVANAGARI_FONT_URL_WOFF2}) format('woff2'), url(${DEVANAGARI_FONT_URL_WOFF}) format('woff')`,
+  );
+  try {
+    await face.load();
+    document.fonts.add(face);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export const BOARD_COLORS = {
   crimson: '#991b1b',

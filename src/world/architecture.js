@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OBSTACLES } from './layout.js';
-import { makeArt, makeTexture, makeBump, drawZinc, drawZincBump, drawAnkhiJhyal, drawPasalBoard } from './art.js';
+import { makeArt, makeTexture, makeBump, drawZinc, drawZincBump, drawAnkhiJhyal, drawPasalBoard, loadDevanagariFont } from './art.js';
 
 export const ARCHITECTURE = {
   awningDepth: 1.35,
@@ -253,10 +253,13 @@ function buildAnkhiJhyal(scene, windowMaterial, walls) {
 
 /**
  * @param {THREE.Scene} scene
- * @param {THREE.MeshStandardMaterial} boardMaterial
  * @param {{ back: Box, left: Box }} walls
+ * @param {THREE.WebGLRenderer} renderer
  */
-function buildPasalBoard(scene, boardMaterial, walls) {
+function buildPasalBoard(scene, walls, renderer) {
+  const boardCanvas = makeArt(1024, 340, drawPasalBoard);
+  const boardTexture = makeTexture(boardCanvas, renderer);
+  const boardMaterial = new THREE.MeshStandardMaterial({ map: boardTexture, roughness: 0.7 });
   const geometry = new THREE.PlaneGeometry(ARCHITECTURE.boardWidth, ARCHITECTURE.boardHeight);
   const south = new THREE.Mesh(geometry, boardMaterial);
   south.position.set((walls.left.minX + walls.back.maxX) / 2 - 0.4, ARCHITECTURE.boardY, walls.left.maxZ + 0.011);
@@ -265,6 +268,13 @@ function buildPasalBoard(scene, boardMaterial, walls) {
   east.position.set(walls.back.maxX + 0.011, ARCHITECTURE.boardY, (walls.back.minZ + walls.left.maxZ) / 2 + 0.6);
   east.rotation.y = Math.PI / 2;
   scene.add(east);
+
+  loadDevanagariFont().then((loaded) => {
+    if (!loaded) return;
+    const ctx = /** @type {CanvasRenderingContext2D} */ (boardCanvas.getContext('2d'));
+    drawPasalBoard(ctx, boardCanvas.width, boardCanvas.height);
+    boardTexture.needsUpdate = true;
+  });
 }
 
 /**
@@ -313,17 +323,12 @@ export function buildArchitecture(scene, renderer) {
     map: makeTexture(makeArt(128, 128, drawAnkhiJhyal), renderer),
     roughness: 0.85,
   });
-  const boardMaterial = new THREE.MeshStandardMaterial({
-    map: makeTexture(makeArt(1024, 340, drawPasalBoard), renderer),
-    roughness: 0.7,
-  });
-
   buildAwning(scene, zincMaterial, walls);
   buildThaam(scene, timberMaterial, walls);
   buildShutterHousings(scene, shutterMaterial, walls);
   buildPedi(scene, stoneMaterial, walls);
   buildAnkhiJhyal(scene, windowMaterial, walls);
-  buildPasalBoard(scene, boardMaterial, walls);
+  buildPasalBoard(scene, walls, renderer);
   buildRoof(scene, zincMaterial, walls);
 
   const rim = new THREE.DirectionalLight(ARCHITECTURE_COLORS.rimLight, 0.5);

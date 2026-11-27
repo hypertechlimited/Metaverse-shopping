@@ -17,6 +17,8 @@ test('golden culture polish: mandala, windhorse lungta, atmosphere, d-pad', asyn
   await expect(page.locator('.dpad-up')).toHaveAccessibleName('Zoom camera in');
 
   await page.waitForTimeout(2500);
+  const fontReady = await page.evaluate(() => document.fonts.check('700 100px "Noto Sans Devanagari"'));
+  expect(fontReady).toBe(true);
   const shotA = await page.screenshot({ path: 'test-results/golden-polish-a.png', fullPage: false });
 
   await page.locator('.dpad-right').click();
