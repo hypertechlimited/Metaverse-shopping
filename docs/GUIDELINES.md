@@ -14,7 +14,7 @@
 **Diagnosis:** AI slop is not bad design — it is *design with no author*. An unconstrained generator returns the statistical average of its training data (purple→cyan gradients, glassmorphism, three identical cards, Inter everywhere, dark mode by reflex). Slop is a symptom of **missing constraints**, so the cure is binding decisions made *before* generation. Every rule below is a pre-made decision the implementation may not renegotiate.
 
 ### Binding tokens
-- **Palette is fixed:** Newari brick `#8f3b26`, timber `#452719`, zinc `#0369a1`, shutter teal `#0f766e`, crimson `#991b1b`, gold `#fbbf24`. No gradients outside the sky. No purple, ever. New accent colors require a doc change first, code second.
+- **Palette is fixed:** Newari brick `#8f3b26`, timber `#452719`, zinc `#0369a1`, shutter teal `#0f766e`, crimson `#991b1b`, gold `#fbbf24`, marigold `#ea580c` (added M1 for sayapatri toran — binding via reference 01). No gradients outside the sky. No purple, ever. New accent colors require a doc change first, code second. Lungta prayer flags use the canonical five-color sequence (blue, white, red, green, yellow) as a cultural constant, exempt from the accent rule.
 - **Typography:** no Inter/Roboto/Open Sans as headline faces. Devanagari-first headings, Latin body; sizes on one scale (12/14/16/20/28/40); body ≥ 16 px; measure 60–80 characters. Devanagari conjuncts must render correctly on canvas textures — verified with the golden test string (`सगरमाथा कर्नर पसल`).
 - **Cards default to borderless.** A 1 px gray border on every surface is the #1 slop tell. Elevation via the 3D scrim and shadow, not outlines.
 - **Spacing is a mandated grid** (4/8 px system). 80% of premium feel is spacing rhythm and alignment, not color.

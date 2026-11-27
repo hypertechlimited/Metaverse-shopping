@@ -4,6 +4,8 @@ import { createPointerGuard, observeResize } from './engine/input.js';
 import { createStorage } from './engine/storage.js';
 import { OBSTACLES, LANDING_ORBIT } from './world/layout.js';
 import { makeArt, makeTexture, makeBump, drawBrick, drawBrickBump, drawCobble, drawCobbleBump } from './world/art.js';
+import { buildArchitecture } from './world/architecture.js';
+import { buildCulture } from './world/culture.js';
 
 const state = {
   mode: 'landing',
@@ -113,6 +115,8 @@ function boot() {
 
   buildLighting(scene);
   buildShell(scene, renderer);
+  buildArchitecture(scene, renderer);
+  const culture = buildCulture(scene, renderer);
 
   createStorage().load();
 
@@ -133,8 +137,9 @@ function boot() {
     }
   }
 
-  /** @param {number} _timeMs */
-  function render(_timeMs) {
+  /** @param {number} timeMs */
+  function render(timeMs) {
+    culture.update(timeMs / 1000);
     if (state.mode === 'landing') {
       camera.position.set(
         LANDING_ORBIT.target[0] + Math.cos(state.orbitAngle) * LANDING_ORBIT.radius,
