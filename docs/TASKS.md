@@ -4,9 +4,11 @@ Each task has an owner-ready scope, files touched, and **acceptance criteria (AC
 
 ---
 
-## M0 — Scaffold & Engine Core
-**Scope:** import map (`three@0.187.0`), `index.html` shell, `src/engine/loop.js`, `engine/input.js`, `engine/storage.js`, `world/layout.js`, `main.js`. Static geometry placeholder for the building shell (brick box, ground plane).
-**AC:**
+## M0 — Scaffold & Engine Core  ✅ **DONE (2026-11-27, branch `milestone/m0-engine-core`)**
+**Delivered:** vendored `three.module.js`+`three.core.js` (SHA-256 `104f5614…` / `613e370f…`), import map, `index.html` + fallback screen, `engine/loop.js` (fixed-step 60 Hz, drift-safe accumulator, delta clamp), `engine/input.js` (6 px pointer guard, ResizeObserver), `engine/storage.js` (injectable backend, try/catch, shape validation), `world/layout.js` (spec-parity constants), `world/art.js` (`makeArt`/`makeTexture` + brick/cobble color+bump maps), `main.js` (WebGL2 probe, ACES, `PCFShadowMap`, DPR ≤ 2, context-loss pause/resume, shell geometry derived from `OBSTACLES`), CI workflow (tsc → vitest → Playwright), 15 unit tests, golden boot spec.
+**Upgrades vs. plan:** context-loss handling and WebGL2 fallback pulled forward from M5; CI shipped inside M0; layout constants unit-tested against the spec table.
+**Verification:** `tsc --noEmit` green · `vitest` 15/15 green · syntax + import-graph checks green. Golden browser test cannot execute in the build sandbox (no root for Chromium system libraries) — wired into CI (`--with-deps` provides them) and gates the merge there.
+**Original AC:**
 - Page boots with zero console errors; canvas fills viewport; resize keeps aspect.
 - Delta clamp verified: background-tab then refocus produces no camera jump.
 - `tsc --noEmit` and `vitest run` pass; `layout.js` exports SHOP/ZONES/OBSTACLES/CAMERA_PRESETS and OBSTACLES values equal the spec table exactly.
