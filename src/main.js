@@ -2,20 +2,18 @@ import * as THREE from 'three';
 import { createTimestep } from './engine/loop.js';
 import { createPointerGuard, observeResize } from './engine/input.js';
 import { createStorage } from './engine/storage.js';
-import { OBSTACLES, LANDING_ORBIT } from './world/layout.js';
+import { createStore } from './engine/store.js';
+import { createCameraRig } from './engine/cameraRig.js';
+import { createBell } from './engine/audio.js';
+import { OBSTACLES, LANDING_ORBIT, ENTER_POSITION, CAMERA_PRESETS } from './world/layout.js';
 import { makeArt, makeTexture, makeBump, drawBrick, drawBrickBump, drawCobble, drawCobbleBump } from './world/art.js';
 import { buildArchitecture } from './world/architecture.js';
 import { buildCulture } from './world/culture.js';
 import { buildAripana } from './world/mandala.js';
 import { buildAtmosphere } from './world/atmosphere.js';
 import { createDpad, createKeyboardControl, clampOrbitRadius, DPAD, directionVector } from './ui/dpad.js';
-
-const state = {
-  mode: 'landing',
-  orbitAngle: 0.9,
-  orbitRadius: LANDING_ORBIT.radius,
-  paused: false,
-};
+import { createLandingOverlay } from './ui/landing.js';
+import { createToast } from './ui/toast.js';
 
 function supportsWebGL2() {
   const probe = document.createElement('canvas');
@@ -66,12 +64,11 @@ function buildShell(scene, renderer) {
     const centerZ = (box.minZ + box.maxZ) / 2;
     const mesh = new THREE.Mesh(
       new THREE.BoxGeometry(width, height, depth),
-      isWall ? brickMaterial : box.name === 'Corner Pillar' ? woodMaterial : woodMaterial,
+      isWall ? brickMaterial : box.name === 'Corner Pillar' ? stoneMaterial : woodMaterial,
     );
     mesh.position.set(centerX, height / 2, centerZ);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    if (box.name === 'Corner Pillar') mesh.material = stoneMaterial;
     scene.add(mesh);
   }
 
@@ -94,8 +91,17 @@ function buildLighting(scene) {
   scene.add(sun);
 }
 
+/**
+ * @param {string} name
+ * @returns {string}
+ */
+function greetingFor(name) {
+  return name ? `नमस्ते, ${name}! पसलमा स्वागत छ।` : 'नमस्ते! पसलमा स्वागत छ।';
+}
+
 function boot() {
   const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('scene'));
+  const body = document.body;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -103,12 +109,14 @@ function boot() {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
 
+  /** @type {{ current: ((timeMs: number) => void) | null }} */
+  const frameRef = { current: null };
   canvas.addEventListener('webglcontextlost', (event) => {
     event.preventDefault();
-    state.paused = true;
+    renderer.setAnimationLoop(null);
   });
   canvas.addEventListener('webglcontextrestored', () => {
-    state.paused = false;
+    if (frameRef.current) renderer.setAnimationLoop(frameRef.current);
   });
 
   const scene = new THREE.Scene();
@@ -125,21 +133,80 @@ function boot() {
   buildAripana(scene, renderer);
   const atmosphere = buildAtmosphere(scene, renderer, { reducedMotion });
 
-  createStorage().load();
+  const storage = createStorage();
+  const persisted = /** @type {{ visitorName: string, stockMap: Record<string, number>, cartArr: Array<{ id: string, vIdx: number, qty: number }> }} */ (storage.load());
+  const store = createStore({
+    mode: 'landing',
+    visitorName: typeof persisted.visitorName === 'string' ? persisted.visitorName : '',
+  });
+  store.subscribe((current) => {
+    body.dataset.mode = current.mode;
+  });
+  body.dataset.mode = store.get().mode;
+  body.dataset.audio = 'idle';
+
+  const bell = createBell();
+  const rig = createCameraRig({
+    camera,
+    landingOrbit: LANDING_ORBIT,
+    enterPosition: ENTER_POSITION,
+    reducedMotion,
+  });
 
   const guard = createPointerGuard(canvas);
-  void guard;
+  canvas.addEventListener('click', (event) => {
+    if (!guard.wasClick(/** @type {PointerEvent} */ (event))) return;
+    if (store.get().mode !== 'explore') return;
+  });
 
   const applyDirection = (/** @type {import('./ui/dpad.js').Direction} */ direction) => {
+    if (rig.getMode() !== 'orbit') return;
     const vector = directionVector(direction);
-    state.orbitAngle += vector.x * DPAD.stepAngle;
-    state.orbitRadius = clampOrbitRadius(state.orbitRadius + vector.z * DPAD.stepZoom);
+    const orbit = rig.getOrbit();
+    rig.setOrbit({
+      angle: orbit.angle + vector.x * DPAD.stepAngle,
+      radius: clampOrbitRadius(orbit.radius + vector.z * DPAD.stepZoom),
+    });
   };
-  const dpad = createDpad(document.body, { onDirection: applyDirection });
+  const dpad = createDpad(body, { onDirection: applyDirection });
   const keyboard = createKeyboardControl(window, { onDirection: applyDirection });
+
+  /**
+   * @param {string} name
+   * @param {string | null} preset
+   */
+  function enterPasal(name, preset) {
+    if (store.get().mode !== 'landing') return;
+    const presetEntry = preset
+      ? CAMERA_PRESETS.find((entry) => entry.name === preset)
+      : undefined;
+    const target = presetEntry?.position ?? ENTER_POSITION;
+    store.set({ mode: 'transition', visitorName: name });
+    storage.save({
+      visitorName: name,
+      stockMap: persisted.stockMap,
+      cartArr: persisted.cartArr,
+    });
+    dpad.dispose();
+    keyboard.dispose();
+    rig.beginTransition(/** @type {[number, number, number]} */ (target), presetEntry?.lookAt);
+    void bell.play().then((audioState) => {
+      body.dataset.audio = audioState;
+    });
+    createToast(body, greetingFor(name));
+  }
+
+  const landing = createLandingOverlay(body, {
+    initialName: store.get().visitorName,
+    onEnter: ({ name, preset }) => enterPasal(name, preset),
+  });
+
   const releaseControls = () => {
     dpad.dispose();
     keyboard.dispose();
+    guard.dispose();
+    landing.dispose();
+    bell.dispose();
   };
   window.addEventListener('pagehide', releaseControls, { once: true });
 
@@ -149,12 +216,26 @@ function boot() {
     camera.updateProjectionMatrix();
   });
 
+  let lastCamX = Number.NaN;
+  let lastCamY = Number.NaN;
+  let lastCamZ = Number.NaN;
+  function publishCamera() {
+    const { x, y, z } = camera.position;
+    if (x === lastCamX && y === lastCamY && z === lastCamZ) return;
+    lastCamX = x;
+    lastCamY = y;
+    lastCamZ = z;
+    body.dataset.camX = x.toFixed(3);
+    body.dataset.camY = y.toFixed(3);
+    body.dataset.camZ = z.toFixed(3);
+  }
+
   /** @param {number} fixedDelta */
   function update(fixedDelta) {
-    if (state.paused) return;
     if (!Number.isFinite(fixedDelta)) return;
-    if (state.mode === 'landing') {
-      state.orbitAngle += fixedDelta * 0.12;
+    rig.update(fixedDelta);
+    if (store.get().mode === 'transition' && rig.getMode() === 'settled') {
+      store.set({ mode: 'explore' });
     }
   }
 
@@ -162,18 +243,14 @@ function boot() {
   function render(timeMs) {
     culture.update(timeMs / 1000);
     atmosphere.update(timeMs / 1000);
-    if (state.mode === 'landing') {
-      camera.position.set(
-        LANDING_ORBIT.target[0] + Math.cos(state.orbitAngle) * state.orbitRadius,
-        LANDING_ORBIT.height,
-        LANDING_ORBIT.target[2] + Math.sin(state.orbitAngle) * state.orbitRadius,
-      );
-      camera.lookAt(LANDING_ORBIT.target[0], LANDING_ORBIT.target[1], LANDING_ORBIT.target[2]);
-    }
+    rig.render();
+    if (rig.getMode() !== 'orbit') publishCamera();
     renderer.render(scene, camera);
   }
 
-  renderer.setAnimationLoop(createTimestep({ update, render }));
+  const frame = createTimestep({ update, render });
+  frameRef.current = frame;
+  renderer.setAnimationLoop(frame);
 }
 
 if (supportsWebGL2()) {
