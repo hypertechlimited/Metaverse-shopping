@@ -72,6 +72,7 @@ export function createDpad(host, handlers) {
   pad.className = 'dpad';
   pad.setAttribute('role', 'group');
   pad.setAttribute('aria-label', 'Camera controls');
+  host.appendChild(pad);
 
   /** @type {Array<() => void>} */
   const cleanups = [];
@@ -82,7 +83,7 @@ export function createDpad(host, handlers) {
     button.className = `dpad-btn dpad-${direction}`;
     button.setAttribute('aria-label', ARIA_LABELS[direction]);
     button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${CHEVRONS[direction]}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-    host.appendChild(button);
+    pad.appendChild(button);
 
     /** @type {number | undefined} */
     let repeatTimer;
@@ -111,8 +112,6 @@ export function createDpad(host, handlers) {
       button.remove();
     });
   }
-
-  host.appendChild(pad);
 
   return {
     dispose() {
