@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { OBSTACLES } from './layout.js';
+import { OBSTACLES, STREET } from './layout.js';
+import { MANDALA } from './mandala.js';
 import { makeArt, makeTexture, drawBurlap, drawQrPattern } from './art.js';
 
 export const PROPS = {
@@ -10,16 +11,110 @@ export const PROPS = {
   sack: { radii: [0.01, 0.22, 0.26, 0.24, 0.13, 0.07, 0.075], heights: [0, 0.02, 0.12, 0.26, 0.34, 0.4, 0.44], tilt: 0.18 },
   glass: { radius: 0.035, height: 0.095, teaHeight: 0.055 },
   qr: { width: 0.13, height: 0.19, thickness: 0.016, tilt: -0.32 },
+  glaze: { color: 0x8a3b22, roughness: 0.3, clearcoat: 1.0, clearcoatRoughness: 0.18 },
+  glassPane: { color: 0xd8e4e0, roughness: 0.05, transmission: 0.85, thickness: 0.04, ior: 1.45 },
+  scatter: {
+    pebbleCount: 84,
+    petalCount: 48,
+    pebble: { radius: 0.035, color: 0x8a8578 },
+    petal: { radius: 0.05, color: 0xea580c },
+    y: 0.012,
+    obstaclePad: 0.2,
+    mandalaPad: 0.4,
+    streetPad: 1,
+  },
   colors: {
     brass: 0xb08d3e,
-    glaze: 0x8a3b22,
-    glass: 0xd8e4e0,
     tea: 0xc07a2a,
     card: 0xf5f2ea,
   },
 };
 
+/** @param {number} seed @returns {number} deterministic hash in [0, 1) */
+function hash01(seed) {
+  return Math.abs(Math.sin(seed) * 43758.5453) % 1;
+}
+
+/** @param {number} x @param {number} z @returns {boolean} */
+function isFreeSpot(x, z) {
+  const pad = PROPS.scatter.obstaclePad;
+  for (const box of OBSTACLES) {
+    if (x > box.minX - pad && x < box.maxX + pad && z > box.minZ - pad && z < box.maxZ + pad) return false;
+  }
+  const mandalaDistance = Math.hypot(x - MANDALA.southPosition[0], z - MANDALA.southPosition[2]);
+  return mandalaDistance > MANDALA.size / 2 + PROPS.scatter.mandalaPad;
+}
+
+/**
+ * Deterministic pebble + marigold petal scatter across the street, clear of
+ * obstacles and the south aripana mandala.
+ * @returns {{ pebbles: Array<{ x: number, z: number, scale: number, rot: number }>, petals: Array<{ x: number, z: number, rot: number, tilt: number }> }}
+ */
+export function scatterPlacements() {
+  const span = Math.max(STREET.maxX, STREET.maxZ) - PROPS.scatter.streetPad;
+  const pebbles = [];
+  const petals = [];
+  for (let i = 0; pebbles.length < PROPS.scatter.pebbleCount && i < PROPS.scatter.pebbleCount * 8; i++) {
+    const x = (hash01(i * 12.9898 + 4.7) * 2 - 1) * span;
+    const z = (hash01(i * 78.233 + 2.1) * 2 - 1) * span;
+    if (!isFreeSpot(x, z)) continue;
+    pebbles.push({ x, z, scale: 0.6 + hash01(i * 33.1) * 0.8, rot: hash01(i * 7.7) * Math.PI });
+  }
+  for (let i = 0; petals.length < PROPS.scatter.petalCount && i < PROPS.scatter.petalCount * 8; i++) {
+    const x = (hash01(i * 51.7 + 9.3) * 2 - 1) * span;
+    const z = (hash01(i * 23.3 + 6.8) * 2 - 1) * span;
+    if (!isFreeSpot(x, z)) continue;
+    petals.push({ x, z, rot: hash01(i * 41.9) * Math.PI * 2, tilt: hash01(i * 13.3) * 0.3 });
+  }
+  return { pebbles, petals };
+}
+
+/** @param {THREE.Scene} scene @returns {{ pebbles: THREE.InstancedMesh, petals: THREE.InstancedMesh }} */
+function buildScatter(scene) {
+  const { pebbles, petals } = scatterPlacements();
+  const matrix = new THREE.Matrix4();
+  const quaternion = new THREE.Quaternion();
+  const euler = new THREE.Euler();
+  const position = new THREE.Vector3();
+  const scaleVector = new THREE.Vector3();
+
+  const pebbleGeometry = new THREE.DodecahedronGeometry(PROPS.scatter.pebble.radius, 0);
+  const pebbleMaterial = new THREE.MeshStandardMaterial({ color: PROPS.scatter.pebble.color, roughness: 0.95 });
+  const pebbleMesh = new THREE.InstancedMesh(pebbleGeometry, pebbleMaterial, pebbles.length);
+  pebbleMesh.receiveShadow = true;
+  for (const [index, pebble] of pebbles.entries()) {
+    position.set(pebble.x, PROPS.scatter.y, pebble.z);
+    euler.set(0, pebble.rot, 0);
+    quaternion.setFromEuler(euler);
+    scaleVector.setScalar(pebble.scale);
+    pebbleMesh.setMatrixAt(index, matrix.compose(position, quaternion, scaleVector));
+  }
+  scene.add(pebbleMesh);
+
+  const petalGeometry = new THREE.CylinderGeometry(
+    PROPS.scatter.petal.radius,
+    PROPS.scatter.petal.radius * 0.6,
+    0.008,
+    6,
+  );
+  const petalMaterial = new THREE.MeshStandardMaterial({ color: PROPS.scatter.petal.color, roughness: 0.85 });
+  const petalMesh = new THREE.InstancedMesh(petalGeometry, petalMaterial, petals.length);
+  petalMesh.receiveShadow = true;
+  for (const [index, petal] of petals.entries()) {
+    position.set(petal.x, PROPS.scatter.y, petal.z);
+    euler.set(petal.tilt, petal.rot, petal.tilt);
+    quaternion.setFromEuler(euler);
+    scaleVector.setScalar(1);
+    petalMesh.setMatrixAt(index, matrix.compose(position, quaternion, scaleVector));
+  }
+  scene.add(petalMesh);
+
+  return { pebbles: pebbleMesh, petals: petalMesh };
+}
+
 const PROP_NAMES = ['jar-large', 'jar-medium', 'jar-small', 'balance-scale', 'chiya-glass', 'qr-stand'];
+
+export const PROPS_DRAW_CALL_BUDGET = 9;
 
 /**
  * Pure prop layout derived from layout.js OBSTACLES — every prop sits on a named base box.
@@ -119,12 +214,18 @@ function sackGeometry(scale, lean, position) {
  */
 export function buildProps(scene, renderer) {
   const brassMaterial = new THREE.MeshStandardMaterial({ color: PROPS.colors.brass, metalness: 0.85, roughness: 0.35 });
-  const glazeMaterial = new THREE.MeshStandardMaterial({ color: PROPS.colors.glaze, roughness: 0.32 });
-  const glassMaterial = new THREE.MeshStandardMaterial({
-    color: PROPS.colors.glass,
-    roughness: 0.08,
-    transparent: true,
-    opacity: 0.35,
+  const glazeMaterial = new THREE.MeshPhysicalMaterial({
+    color: PROPS.glaze.color,
+    roughness: PROPS.glaze.roughness,
+    clearcoat: PROPS.glaze.clearcoat,
+    clearcoatRoughness: PROPS.glaze.clearcoatRoughness,
+  });
+  const glassMaterial = new THREE.MeshPhysicalMaterial({
+    color: PROPS.glassPane.color,
+    roughness: PROPS.glassPane.roughness,
+    transmission: PROPS.glassPane.transmission,
+    thickness: PROPS.glassPane.thickness,
+    ior: PROPS.glassPane.ior,
   });
   const teaMaterial = new THREE.MeshStandardMaterial({ color: PROPS.colors.tea, roughness: 0.2 });
   const cardMaterial = new THREE.MeshStandardMaterial({ color: PROPS.colors.card, roughness: 0.85 });
@@ -182,7 +283,9 @@ export function buildProps(scene, renderer) {
   sacks.castShadow = true;
   scene.add(sacks);
 
-  return { drawCallBudget: 7 };
+  buildScatter(scene);
+
+  return { drawCallBudget: PROPS_DRAW_CALL_BUDGET };
 }
 
 export { PROP_NAMES };

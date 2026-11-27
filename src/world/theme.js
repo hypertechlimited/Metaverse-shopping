@@ -4,13 +4,13 @@ import { ARCHITECTURE } from './architecture.js';
 import { makeArt, makeTexture, drawSky, drawContactAO } from './art.js';
 
 export const THEME = {
-  exposure: 1.05,
+  exposure: 1.08,
   fogColor: 0xd9b183,
-  fogDensity: 0.022,
-  environmentIntensity: 0.5,
+  fogDensity: 0.02,
+  environmentIntensity: 0.62,
   skyWidth: 1024,
   skyHeight: 512,
-  hemisphere: { sky: 0xe8cfa8, ground: 0x6b3a24, intensity: 0.65 },
+  hemisphere: { sky: 0xe8cfa8, ground: 0x6b3a24, intensity: 0.7 },
   sun: {
     color: 0xffd7a3,
     intensity: 2.6,

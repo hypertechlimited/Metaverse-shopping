@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PROPS, PROP_NAMES, propPlacements, sackPlacements } from '../../src/world/props.js';
+import { PROPS, PROP_NAMES, PROPS_DRAW_CALL_BUDGET, propPlacements, sackPlacements, scatterPlacements } from '../../src/world/props.js';
 import { OBSTACLES, ENTER_POSITION } from '../../src/world/layout.js';
 import { MANDALA } from '../../src/world/mandala.js';
 import { ARCHITECTURE } from '../../src/world/architecture.js';
@@ -32,9 +32,53 @@ describe('counter prop placement', () => {
     }
   });
 
-  it('merges same-material parts so props cost at most 7 draw calls', () => {
+  it('merges same-material parts so props cost at most 9 draw calls', () => {
     expect(PROP_NAMES.length).toBe(6);
-    expect(7).toBeLessThanOrEqual(7);
+    expect(PROPS_DRAW_CALL_BUDGET).toBeLessThanOrEqual(9);
+  });
+});
+
+describe('physical hero materials', () => {
+  it('gives the glazed jars a clearcoat ceramic finish', () => {
+    expect(PROPS.glaze.clearcoat).toBeGreaterThanOrEqual(0.8);
+    expect(PROPS.glaze.clearcoatRoughness).toBeLessThan(0.4);
+    expect(PROPS.glaze.roughness).toBeGreaterThan(0.1);
+  });
+
+  it('renders the chiya glass with real transmission, not an opacity fake', () => {
+    expect(PROPS.glassPane.transmission).toBeGreaterThan(0.5);
+    expect(PROPS.glassPane.thickness).toBeGreaterThan(0);
+    expect(PROPS.glassPane.ior).toBeGreaterThanOrEqual(1.3);
+    expect(PROPS.glassPane.ior).toBeLessThanOrEqual(1.6);
+  });
+});
+
+describe('instanced ground scatter', () => {
+  const scatter = scatterPlacements();
+
+  it('is deterministic across calls', () => {
+    expect(scatterPlacements()).toEqual(scatter);
+  });
+
+  it('seeds pebbles and petals at the named-constant counts', () => {
+    expect(scatter.pebbles.length).toBe(PROPS.scatter.pebbleCount);
+    expect(scatter.petals.length).toBe(PROPS.scatter.petalCount);
+    expect(PROPS.scatter.pebbleCount + PROPS.scatter.petalCount).toBeGreaterThanOrEqual(100);
+  });
+
+  it('keeps every instance clear of obstacles and the aripana mandala', () => {
+    for (const spot of [...scatter.pebbles, ...scatter.petals]) {
+      for (const box of OBSTACLES) {
+        const inside =
+          spot.x > box.minX - 0.001 &&
+          spot.x < box.maxX + 0.001 &&
+          spot.z > box.minZ - 0.001 &&
+          spot.z < box.maxZ + 0.001;
+        expect(inside).toBe(false);
+      }
+      const mandalaDistance = Math.hypot(spot.x - MANDALA.southPosition[0], spot.z - MANDALA.southPosition[2]);
+      expect(mandalaDistance).toBeGreaterThan(MANDALA.size / 2);
+    }
   });
 });
 

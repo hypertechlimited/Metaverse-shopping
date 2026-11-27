@@ -17,6 +17,7 @@ import { buildCulture } from './world/culture.js';
 import { buildAripana } from './world/mandala.js';
 import { buildAtmosphere } from './world/atmosphere.js';
 import { buildProps } from './world/props.js';
+import { buildFacades } from './world/facades.js';
 import { drawThumb } from './world/thumbs.js';
 import { createDpad, createKeyboardControl, dragOrbit, clampOrbitRadius, DPAD, directionVector } from './ui/dpad.js';
 import { createLandingOverlay } from './ui/landing.js';
@@ -142,6 +143,7 @@ function boot() {
   const theme = buildTheme(scene, renderer);
   buildShell(scene, renderer);
   buildArchitecture(scene, renderer);
+  buildFacades(scene, renderer);
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const culture = buildCulture(scene, renderer, { reducedMotion });
   buildAripana(scene, renderer);
