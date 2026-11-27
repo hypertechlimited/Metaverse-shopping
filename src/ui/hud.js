@@ -62,7 +62,6 @@ export function createHud(host, { onCartClick }) {
       badge.textContent = count > HUD.badgeMax ? `${HUD.badgeMax}+` : String(count);
       badge.classList.toggle('is-empty', count === 0);
       subtotalEl.textContent = formatRupees(subtotal);
-      cartButton.disabled = count === 0;
     },
     dispose() {
       cartButton.removeEventListener('click', handleClick);
