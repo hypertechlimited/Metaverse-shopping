@@ -6,7 +6,7 @@ Corner of a *galli* intersection, Mangal Bazar, Patan, Lalitpur.
 **Live on GitHub Pages:** [https://hypertechlimited.github.io/Metaverse-shopping/](https://hypertechlimited.github.io/Metaverse-shopping/)
 (automatic deploy on every merge to `main` — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md))
 
-**Status — release candidate (M6):** 83 draw calls at DPR-1 steady state (budget ≤ 88), faced + priced shelves — 3-tier gondola, instanced extra facings, stock-truthful depletion, Devanagari price rails with sold-out stamps; 2.52 MB payload (535 KB gzipped), WebGL context-loss recovery, 362 unit tests + 21/21 golden suite green. **Installable PWA** — offline shell via service worker, home-screen install, INP + error telemetry (open `?debug=1` for the live perf HUD: FPS / CALLS / TRIS / DPR / INP / ERR) and the seven-preset bar including Dusk. **Next: M7–M9** — fixture styles (Traditional / Modern / Mini Super-Mart), aim-dot reticle + mobile touch UX, label atlas with inspired-by packaging. See [docs/RETAIL-DESIGN.md](docs/RETAIL-DESIGN.md), [docs/M6-EXECUTION-PLAN.md](docs/M6-EXECUTION-PLAN.md) and [docs/TASKS.md](docs/TASKS.md).
+**Status — release candidate (M7):** 83 / 84 / 88 draw calls at DPR-1 by fixture style (budget ≤ 88), faced + priced shelves — 3-tier gondola, instanced extra facings, stock-truthful depletion, Devanagari price rails with sold-out stamps; three authored fixture styles — Traditional (default), Modern (laminate + LED shelf lips), Mini Super-Mart (end cap, dump-bin chatti, basket stack, ceiling grid) — switchable via `?style=` and the debug probe, with per-style lighting + tag-palette restyle; 2.52 MB payload (535 KB gzipped), WebGL context-loss recovery, 378 unit tests + 25/25 golden suite green. **Installable PWA** — offline shell via service worker, home-screen install, INP + error telemetry (open `?debug=1` for the live perf HUD: FPS / CALLS / TRIS / DPR / INP / ERR) and the seven-preset bar including Dusk. **Next: M8–M9** — aim-dot reticle + mobile touch UX, label atlas with inspired-by packaging. See [docs/RETAIL-DESIGN.md](docs/RETAIL-DESIGN.md), [docs/M7-EXECUTION-PLAN.md](docs/M7-EXECUTION-PLAN.md) and [docs/TASKS.md](docs/TASKS.md).
 
 ## What This Is
 
@@ -46,8 +46,9 @@ ES modules + import maps require HTTP — `file://` will not work.
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, module boundaries, data flow |
 | [docs/GUIDELINES.md](docs/GUIDELINES.md) | Coding rules, design rules, performance budgets |
-| [docs/TASKS.md](docs/TASKS.md) | Milestone breakdown M0–M6 done, M7–M9 planned with acceptance criteria |
+| [docs/TASKS.md](docs/TASKS.md) | Milestone breakdown M0–M7 done, M8–M9 planned with acceptance criteria |
 | [docs/M6-EXECUTION-PLAN.md](docs/M6-EXECUTION-PLAN.md) | M6 execution plan + as-built record: planogram, gondola, instanced facings, price-rail atlas, test gates |
+| [docs/M7-EXECUTION-PLAN.md](docs/M7-EXECUTION-PLAN.md) | M7 execution plan + as-built record: fixture-style tokens, extras, tag/light restyle, draw-call ledger |
 | [docs/RETAIL-DESIGN.md](docs/RETAIL-DESIGN.md) | M6–M9 design brief: shelf merchandising, fixture styles, aim-dot reticle, mobile touch, label atlas + web research |
 | [docs/TESTING.md](docs/TESTING.md) | Golden test protocol and verification gates |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | GitHub Pages deploy workflow, base-path and payload rules, offline/PWA cache rules |

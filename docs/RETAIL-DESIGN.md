@@ -70,10 +70,12 @@ Implementation rules:
 - **Mix mode allowed:** traditional shell + super-mart interior is the most authentic
   Kathmandu read — recommend default.
 
-Draw-call honesty: current ledger 74/80. The M7 upgrade path (aisle gondolas + end caps)
-will not fit in 6 spare calls, so M7 raises the budget to ≤ 96 **doc-first**: update
-`docs/GUIDELINES.md` + `tests/golden/perf.spec.js` assertion together, re-measure on
-device matrix, and re-verify DPR-2 tier.
+Draw-call honesty: current ledger 74/80. The M7 upgrade path as originally scoped
+(aisle gondolas + end caps) would not fit in 6 spare calls, so a budget raise to ≤ 96
+doc-first was planned. As built (M7, restyle + 5 shadow-free merged extras), the budget
+stayed at ≤ 88: traditional 83, modern 84, supermart 88 — see
+`docs/M7-EXECUTION-PLAN.md` §9; double-sided aisle gondolas remain deferred behind
+live collision/nav-rebuild machinery.
 
 ---
 
@@ -150,7 +152,7 @@ nominative use; the packaging art must stay our own.
 | Milestone | Scope (full AC in TASKS.md) |
 |---|---|
 | **M6** | Shelf & merchandising: planogram facings, 3-tier gondola, shelf-edge price-tag rails, stock-truthful emptying — binding plan in `docs/M6-EXECUTION-PLAN.md` |
-| **M7** | Fixture style variants: Traditional / Modern / Mini Super-Mart (+ budget raise, doc-first) |
+| **M7** | Fixture style variants: Traditional / Modern / Mini Super-Mart (✅ done — budget ≤ 88 held, see `docs/M7-EXECUTION-PLAN.md`) |
 | **M8** | Aim-dot reticle + re-anchored tooltip + mobile tap/pinch/haptics/bottom sheet |
 | **M9** | Label atlas: inspired-by packaging art + catalog v2 price refresh from researched sources |
 

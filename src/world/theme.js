@@ -100,7 +100,7 @@ export function contactDecals() {
 
 /** @typedef {keyof typeof MOODS} MoodName */
 
-/** @param {THREE.Scene} scene @param {THREE.WebGLRenderer} renderer @returns {{ setMood: (mood: MoodName) => boolean, dispose: () => void }} */
+/** @param {THREE.Scene} scene @param {THREE.WebGLRenderer} renderer @returns {{ setMood: (mood: MoodName) => boolean, setStyleLighting: (light: import('./fixtureStyles.js').FixtureTokens['light']) => boolean, dispose: () => void }} */
 export function buildTheme(scene, renderer) {
   const pmrem = new THREE.PMREMGenerator(renderer);
   /** @type {Record<MoodName, { texture: THREE.Texture, envMap: THREE.Texture }>} */
@@ -153,30 +153,50 @@ export function buildTheme(scene, renderer) {
   decalMesh.renderOrder = THEME.contact.renderOrder;
   scene.add(decalMesh);
 
-  setMood('day');
+  /** @type {MoodName} */
+  let currentMood = 'day';
+  /** @type {import('./fixtureStyles.js').FixtureTokens['light'] | null} */
+  let styleOverlay = null;
+
+  /** @param {import('./fixtureStyles.js').FixtureTokens['light']} light @returns {boolean} */
+  function setStyleLighting(light) {
+    styleOverlay = light;
+    const config = MOODS[currentMood];
+    if (!config) return false;
+    return applyMood(config);
+  }
+
+  /** @param {MoodConfig} config @returns {boolean} */
+  function applyMood(config) {
+    renderer.toneMappingExposure = config.exposure + (styleOverlay?.exposureBoost ?? 0);
+    scene.background = skies[currentMood].texture;
+    scene.environment = skies[currentMood].envMap;
+    scene.environmentIntensity = config.environmentIntensity;
+    const fog = /** @type {THREE.FogExp2} */ (scene.fog);
+    fog.color.set(config.fogColor);
+    fog.density = config.fogDensity;
+    hemisphere.color.set(styleOverlay?.hemisphereSky ?? config.hemisphere.sky);
+    hemisphere.groundColor.set(config.hemisphere.ground);
+    hemisphere.intensity = config.hemisphere.intensity;
+    sun.color.set(styleOverlay?.sunColor ?? config.sun.color);
+    sun.intensity = config.sun.intensity + (styleOverlay?.sunIntensityBoost ?? 0);
+    sun.position.set(...config.sun.position);
+    return true;
+  }
 
   /** @param {MoodName} mood @returns {boolean} */
   function setMood(mood) {
     const config = MOODS[mood];
     if (!config) return false;
-    renderer.toneMappingExposure = config.exposure;
-    scene.background = skies[mood].texture;
-    scene.environment = skies[mood].envMap;
-    scene.environmentIntensity = config.environmentIntensity;
-    const fog = /** @type {THREE.FogExp2} */ (scene.fog);
-    fog.color.set(config.fogColor);
-    fog.density = config.fogDensity;
-    hemisphere.color.set(config.hemisphere.sky);
-    hemisphere.groundColor.set(config.hemisphere.ground);
-    hemisphere.intensity = config.hemisphere.intensity;
-    sun.color.set(config.sun.color);
-    sun.intensity = config.sun.intensity;
-    sun.position.set(...config.sun.position);
-    return true;
+    currentMood = mood;
+    return applyMood(config);
   }
+
+  setMood('day');
 
   return {
     setMood,
+    setStyleLighting,
     dispose() {
       decalMesh.geometry.dispose();
       scene.remove(decalMesh);

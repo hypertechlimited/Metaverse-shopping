@@ -31,6 +31,8 @@ import { buildAtmosphere } from './world/atmosphere.js';
 import { buildProps } from './world/props.js';
 import { buildProducts } from './world/products.js';
 import { buildShelfTags } from './world/shelfTags.js';
+import { applyFixtureStyle } from './world/fixtures.js';
+import { fixtureTokensFor, styleFromParam } from './world/fixtureStyles.js';
 import { buildNpcs, npcName } from './world/npc.js';
 import { buildFacades } from './world/facades.js';
 import { placedGeometry, mergedParts, addMergedMesh } from './world/merge.js';
@@ -192,6 +194,18 @@ function boot() {
   const shelfTags = buildShelfTags(scene, renderer);
   const npcs = buildNpcs(scene, renderer);
 
+  let activeStyle = styleFromParam(new URLSearchParams(window.location.search).get('style'));
+  /** @type {{ dispose: () => void } | null} */
+  let fixtureHandle = null;
+  /** @param {import('./world/fixtureStyles.js').FixtureStyleName} name */
+  const applyStyle = (name) => {
+    const tokens = fixtureTokensFor(name);
+    if (fixtureHandle) fixtureHandle.dispose();
+    fixtureHandle = applyFixtureStyle(scene, tokens);
+    theme.setStyleLighting(tokens.light);
+    shelfTags.restyle(tokens.tag);
+  };
+
   const navGrid = buildNavGrid(OBSTACLES, STREET, { radius: PLAYER_RADIUS });
   const peer = buildPeer(scene, renderer);
   const peerFeed = createPeerFeed({ path: { from: [-4, 2.4], to: [6, 2.4], period: 20, phase: 0 }, seed: 7 });
@@ -219,6 +233,7 @@ function boot() {
     visitorName: typeof persisted.visitorName === 'string' ? persisted.visitorName : '',
     stockMap,
     cartLines: restoreCart(persisted.cartArr, stockMap),
+    fixtureStyle: styleFromParam(new URLSearchParams(window.location.search).get('style')),
   });
   store.subscribe((current) => {
     body.dataset.mode = current.mode;
@@ -234,8 +249,21 @@ function boot() {
     products.setStock(current.stockMap);
     shelfTags.setStock(current.stockMap);
   });
+  store.subscribe((current) => {
+    if (current.fixtureStyle !== activeStyle) {
+      activeStyle = current.fixtureStyle;
+      applyStyle(activeStyle);
+    }
+  });
   products.setStock(store.get().stockMap);
   shelfTags.setStock(store.get().stockMap);
+  applyStyle(activeStyle);
+  if (probe) {
+    const handle = /** @type {any} */ (window).__sagarmatha;
+    if (handle) {
+      handle.setFixtureStyle = (/** @type {string} */ name) => store.set({ fixtureStyle: styleFromParam(name) });
+    }
+  }
   body.dataset.mode = store.get().mode;
   body.dataset.audio = 'idle';
 
@@ -662,6 +690,7 @@ function boot() {
     presetBar.dispose();
     products.dispose();
     shelfTags.dispose();
+    if (fixtureHandle) fixtureHandle.dispose();
     npcs.dispose();
     peer.dispose();
     scene.remove(highlight);

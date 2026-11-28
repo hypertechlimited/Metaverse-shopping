@@ -37,7 +37,7 @@ Enforcement: the Vision Reviewer role (see `SWARM-EXECUTION.md`) checks golden s
 
 | Metric | Budget |
 |---|---|
-| Draw calls per frame | ≤ 88 (raised 80 → 88 in M6 doc-first: shelf facings add 7 `InstancedMesh` shape classes + 1 price-rail + 1 gondola; see `docs/M6-EXECUTION-PLAN.md` §5) |
+| Draw calls per frame | ≤ 88 (raised 80 → 88 in M6 doc-first: shelf facings add 3 `InstancedMesh` shape classes + 1 price-rail + 1 gondola; see `docs/M6-EXECUTION-PLAN.md` §5). M7 fixture styles stay inside 88 by restyling materials in place; fixture extras never cast shadows (one call each, no shadow pass): traditional 83, modern 84, supermart 88 measured — see `docs/M7-EXECUTION-PLAN.md` §9 |
 | Total payload | ≤ 5 MB |
 | Frame rate | 60 FPS desktop, ≥ 30 FPS mid-range Android |
 | INP (Interaction to Next Paint) | < 200 ms on all HUD interactions |
