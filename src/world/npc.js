@@ -48,7 +48,7 @@ export function npcPose(t, path) {
 /**
  * @param {CanvasRenderingContext2D} ctx @param {number} w @param {number} h @param {string} nameNp
  */
-function drawNametag(ctx, w, h, nameNp) {
+export function drawNametagCanvas(ctx, w, h, nameNp) {
   ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = 'rgba(20, 12, 8, 0.72)';
   const radius = 14;
@@ -80,12 +80,22 @@ function colorize(geometry, hex) {
   return geometry;
 }
 
+/** Shared avatar material: one per NPC mesh batch, disposable independently. */
+export function createAvatarMaterial() {
+  return new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
+}
+
+/** @param {THREE.Material} material */
+export function disposeAvatarMaterial(material) {
+  material.dispose();
+}
+
 /**
  * Merged vertex-colored body: legs, torso, head, cap — one draw call per NPC.
  * @param {{ body: number, cap: number }} look
  * @returns {THREE.BufferGeometry}
  */
-function buildBodyGeometry(look) {
+export function buildAvatarBody(look) {
   const parts = [
     colorize(new THREE.CylinderGeometry(0.16, 0.2, 0.72, 8).translate(0, 0.36, 0), NPCS.colors.timber),
     colorize(new THREE.CylinderGeometry(0.22, 0.24, 0.62, 8).translate(0, 1.03, 0), look.body),
@@ -102,7 +112,7 @@ function buildBodyGeometry(look) {
  * @returns {{ update: (timeSec: number) => void, npcs: Array<{ id: string, root: THREE.Object3D, proxy: THREE.Mesh }>, dispose: () => void }}
  */
 export function buildNpcs(scene, renderer) {
-  const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 });
+  const material = createAvatarMaterial();
   const proxyMaterial = new THREE.MeshBasicMaterial({ visible: false });
   const proxyGeometry = new THREE.BoxGeometry(NPCS.proxy.width, NPCS.proxy.height, NPCS.proxy.width);
   /** @type {Array<{ id: string, root: THREE.Group, proxy: THREE.Mesh }>} */
@@ -117,11 +127,11 @@ export function buildNpcs(scene, renderer) {
     group.userData.isNpc = true;
     group.userData.npcId = roster.id;
 
-    const body = new THREE.Mesh(buildBodyGeometry(roster), material);
+    const body = new THREE.Mesh(buildAvatarBody(roster), material);
     body.castShadow = true;
     group.add(body);
 
-    const nametagCanvas = makeArt(NPCS.nametag.canvasW, NPCS.nametag.canvasH, (ctx, w, h) => drawNametag(ctx, w, h, roster.nameNp));
+    const nametagCanvas = makeArt(NPCS.nametag.canvasW, NPCS.nametag.canvasH, (ctx, w, h) => drawNametagCanvas(ctx, w, h, roster.nameNp));
     const nametagTexture = makeTexture(nametagCanvas, renderer);
     const nametag = new THREE.Sprite(new THREE.SpriteMaterial({ map: nametagTexture, transparent: true, depthWrite: false }));
     nametag.scale.set(NPCS.nametag.width, NPCS.nametag.height, 1);
@@ -147,7 +157,7 @@ export function buildNpcs(scene, renderer) {
     if (!loaded) return;
     for (const tag of nametags) {
       const ctx = /** @type {CanvasRenderingContext2D} */ (tag.canvas.getContext('2d'));
-      drawNametag(ctx, tag.canvas.width, tag.canvas.height, tag.nameNp);
+      drawNametagCanvas(ctx, tag.canvas.width, tag.canvas.height, tag.nameNp);
       tag.texture.needsUpdate = true;
     }
   });

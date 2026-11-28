@@ -129,6 +129,39 @@ html, body {
 .dpad-up { grid-column: 2; grid-row: 1; }
 .dpad-down { grid-column: 2; grid-row: 3; }
 
+.joystick {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 10;
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  background: rgba(20, 12, 8, 0.38);
+  border: 1px solid rgba(245, 239, 230, 0.22);
+  touch-action: none;
+  pointer-events: auto;
+}
+
+.joystick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(143, 59, 38, 0.85);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  box-shadow: var(--shadow-layered);
+}
+
+.joystick:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+@media (max-width: 640px) {
+  .joystick { left: 10px; bottom: 10px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dpad-btn { transition: none; }
 }
