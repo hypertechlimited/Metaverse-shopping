@@ -9,6 +9,9 @@ import { createPlayer, PLAYER } from './engine/player.js';
 import { buildNavGrid, findPath } from './engine/nav.js';
 import { createPerfGovernor } from './engine/perfGovernor.js';
 import { createDebugProbe } from './engine/debugProbe.js';
+import { createTelemetry } from './engine/telemetry.js';
+import { createInpMonitor } from './engine/inp.js';
+import { registerServiceWork, PWA } from './engine/pwa.js';
 import { createPeerFeed } from './engine/presenceFeed.js';
 import { addSample, trimBuffer, sampleAt } from './engine/avatar.js';
 import { buildPeer } from './world/peer.js';
@@ -141,6 +144,10 @@ function seedStockMap(raw) {
 function boot() {
   const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('scene'));
   const body = document.body;
+  const telemetry = createTelemetry(window);
+  telemetry.install();
+  const inp = createInpMonitor(window);
+  inp.install();
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -163,6 +170,13 @@ function boot() {
 
   const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
   const probe = createDebugProbe({ renderer, scene, camera, search: window.location.search });
+  if (probe) {
+    const handle = /** @type {any} */ (window).__sagarmatha;
+    if (handle) {
+      handle.telemetry = telemetry;
+      handle.inp = inp;
+    }
+  }
 
   const theme = buildTheme(scene, renderer);
   buildShell(scene, renderer);
@@ -511,6 +525,10 @@ function boot() {
     createToast(body, greetingFor(name));
   }
 
+  void registerServiceWork(navigator, window.isSecureContext === true, {
+    onUpdate: () => createToast(body, PWA.updateToast, { durationMs: 8000 }),
+  });
+
   const landing = createLandingOverlay(body, {
     initialName: store.get().visitorName,
     onEnter: ({ name, preset }) => enterPasal(name, preset),
@@ -600,6 +618,8 @@ function boot() {
     ? createDebugHud(/** @type {HTMLElement} */ (hudHost), {
         initialDpr: basePixelRatio,
         getStats: () => /** @type {NonNullable<typeof probe>} */ (probe).stats(),
+        getInp: () => inp.worstMs(),
+        getErrorCount: () => telemetry.size(),
       })
     : null;
   const drawer = createCatalogDrawer(body, {
@@ -639,6 +659,8 @@ function boot() {
     highlight.dispose();
     if (probe) probe.dispose();
     if (debugHud) debugHud.dispose();
+    inp.uninstall();
+    telemetry.uninstall();
     canvas.removeEventListener('pointermove', onPointerMove);
   };
   window.addEventListener('pagehide', releaseControls, { once: true });
