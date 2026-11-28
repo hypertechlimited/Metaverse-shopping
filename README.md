@@ -6,7 +6,7 @@ Corner of a *galli* intersection, Mangal Bazar, Patan, Lalitpur.
 **Live on GitHub Pages:** [https://hypertechlimited.github.io/Metaverse-shopping/](https://hypertechlimited.github.io/Metaverse-shopping/)
 (automatic deploy on every merge to `main` — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md))
 
-**Status — release candidate (M5):** 74 draw calls at DPR-1 steady state (budget ≤ 80), 2.50 MB payload (518 KB gzipped), WebGL context-loss recovery, 20/20 golden suite green. Open `?debug=1` for the live perf HUD (FPS / CALLS / TRIS / DPR) and the seven-preset bar including Dusk.
+**Status — release candidate (M5.5):** 74 draw calls at DPR-1 steady state (budget ≤ 80), 2.52 MB payload (535 KB gzipped), WebGL context-loss recovery, 333 unit tests + 20/20 golden suite green. **Installable PWA** — offline shell via service worker, home-screen install, INP + error telemetry (open `?debug=1` for the live perf HUD: FPS / CALLS / TRIS / DPR / INP / ERR) and the seven-preset bar including Dusk.
 
 ## What This Is
 
@@ -16,6 +16,7 @@ A production-grade **prototype** — not a toy demo — of a spatial commerce ex
 - Authentic Nepali corner-shop architecture (Newari brick, *ankhi jhyal*, *thaam*, *jasta pali*, *pedi*)
 - Real commerce logic: 17-SKU catalog, multi-unit variants, promo codes, QR discount, delivery tiers, printable bill
 - Persistent inventory with oversell guards (`localStorage`, sandbox-safe)
+- Installable PWA: offline shell (service worker), update toast, worst-interaction (INP) + client error telemetry — no backend required
 - Zero runtime dependencies beyond Three.js — all art is procedural HTML5 canvas (`makeArt()`)
 
 ## Stack (verified 2026-11-27)
@@ -45,9 +46,9 @@ ES modules + import maps require HTTP — `file://` will not work.
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, module boundaries, data flow |
 | [docs/GUIDELINES.md](docs/GUIDELINES.md) | Coding rules, design rules, performance budgets |
-| [docs/TASKS.md](docs/TASKS.md) | Milestone breakdown M0–M5 with acceptance criteria |
+| [docs/TASKS.md](docs/TASKS.md) | Milestone breakdown M0–M5.5 with acceptance criteria |
 | [docs/TESTING.md](docs/TESTING.md) | Golden test protocol and verification gates |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | GitHub Pages deploy workflow, base-path and payload rules |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | GitHub Pages deploy workflow, base-path and payload rules, offline/PWA cache rules |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Challenged roadmap, device matrix, Supabase phase, long vision |
 | [docs/RESEARCH-GAPS.md](docs/RESEARCH-GAPS.md) | Second-pass research: WebGPU, storage, INP, security, i18n, XAUR |
 | [docs/SWARM-EXECUTION.md](docs/SWARM-EXECUTION.md) | Multi-agent (swarm) execution model and roles |
