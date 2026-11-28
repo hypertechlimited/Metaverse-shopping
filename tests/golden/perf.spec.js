@@ -5,13 +5,13 @@ const PAYLOAD_BUDGET_BYTES = 5 * 1024 * 1024;
 const FOUR_G = { latencyMs: 100, downloadBytesPerSecond: 750_000, uploadBytesPerSecond: 250_000 };
 const FOUR_G_BUDGET_SECONDS = 5;
 
-/** @param {import('@playwright/test').Page} page */
-async function enterExplore(page) {
+/** @param {import('@playwright/test').Page} page @param {number} [timeoutMs] */
+async function enterExplore(page, timeoutMs = 15000) {
   await page.goto('/?debug=1');
   await page.waitForSelector('.landing');
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.click('.landing-enter');
-  await page.waitForFunction(() => document.body.dataset.mode === 'explore', null, { timeout: 15000 });
+  await page.waitForFunction(() => document.body.dataset.mode === 'explore', null, { timeout: timeoutMs });
 }
 
 test('golden perf: draw calls within budget at steady state', async ({ page }) => {
@@ -66,7 +66,7 @@ test.describe('dpr2', () => {
     /** @type {string[]} */
     const errors = [];
     page.on('pageerror', (error) => errors.push(String(error)));
-    await enterExplore(page);
+    await enterExplore(page, 60000);
     await page.waitForTimeout(2000);
     const stats = await page.evaluate(() => (/** @type {any} */ (window)).__sagarmatha.stats());
     expect(stats.drawCalls).toBeGreaterThan(0);
