@@ -2,11 +2,11 @@ export const DEBUG_HUD = { refreshMs: 500 };
 
 /**
  * @param {HTMLElement} host
- * @param {{ initialDpr: number, getStats: () => { drawCalls: number, triangles: number } }} options
+ * @param {{ initialDpr: number, getStats: () => { drawCalls: number, triangles: number }, getInp?: () => number, getErrorCount?: () => number }} options
  * @param {Document} [doc]
  * @returns {{ update: (timeMs: number) => void, dispose: () => void }}
  */
-export function createDebugHud(host, { initialDpr, getStats }, doc = globalThis.document) {
+export function createDebugHud(host, { initialDpr, getStats, getInp, getErrorCount }, doc = globalThis.document) {
   if (!doc) throw new Error('debugHud requires a document');
   const panel = doc.createElement('div');
   panel.className = 'debug-hud';
@@ -23,6 +23,14 @@ export function createDebugHud(host, { initialDpr, getStats }, doc = globalThis.
   const dprEl = doc.createElement('div');
   dprEl.className = 'debug-hud-row';
   panel.appendChild(dprEl);
+
+  const inpEl = doc.createElement('div');
+  inpEl.className = 'debug-hud-row';
+  panel.appendChild(inpEl);
+
+  const errEl = doc.createElement('div');
+  errEl.className = 'debug-hud-row';
+  panel.appendChild(errEl);
 
   host.appendChild(panel);
 
@@ -41,6 +49,8 @@ export function createDebugHud(host, { initialDpr, getStats }, doc = globalThis.
       fpsEl.textContent = 'FPS ' + fps.toFixed(1);
       callsEl.textContent = 'CALLS ' + stats.drawCalls + ' TRIS ' + stats.triangles;
       dprEl.textContent = 'DPR ' + initialDpr.toFixed(2);
+      inpEl.textContent = 'INP ' + (getInp ? getInp().toFixed(0) : '0') + 'ms';
+      errEl.textContent = 'ERR ' + (getErrorCount ? getErrorCount() : 0);
       frames = 0;
       windowStartMs = timeMs;
     },
