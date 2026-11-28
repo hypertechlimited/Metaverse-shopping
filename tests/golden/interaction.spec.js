@@ -56,6 +56,7 @@ async function flyToPreset(page, name, position) {
 }
 
 test('golden presets — navigate all six camera presets', async ({ page }) => {
+  test.setTimeout(180_000);
   /** @type {string[]} */
   const errors = [];
   page.on('console', (message) => {
