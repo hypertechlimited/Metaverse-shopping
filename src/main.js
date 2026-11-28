@@ -30,6 +30,7 @@ import { buildAripana } from './world/mandala.js';
 import { buildAtmosphere } from './world/atmosphere.js';
 import { buildProps } from './world/props.js';
 import { buildProducts } from './world/products.js';
+import { buildShelfTags } from './world/shelfTags.js';
 import { buildNpcs, npcName } from './world/npc.js';
 import { buildFacades } from './world/facades.js';
 import { placedGeometry, mergedParts, addMergedMesh } from './world/merge.js';
@@ -188,6 +189,7 @@ function boot() {
   const atmosphere = buildAtmosphere(scene, renderer, { reducedMotion });
   buildProps(scene, renderer);
   const products = buildProducts(scene);
+  const shelfTags = buildShelfTags(scene, renderer);
   const npcs = buildNpcs(scene, renderer);
 
   const navGrid = buildNavGrid(OBSTACLES, STREET, { radius: PLAYER_RADIUS });
@@ -228,6 +230,12 @@ function boot() {
       cartArr: current.cartLines,
     });
   });
+  store.subscribe((current) => {
+    products.setStock(current.stockMap);
+    shelfTags.setStock(current.stockMap);
+  });
+  products.setStock(store.get().stockMap);
+  shelfTags.setStock(store.get().stockMap);
   body.dataset.mode = store.get().mode;
   body.dataset.audio = 'idle';
 
@@ -653,6 +661,7 @@ function boot() {
     hoverTip.dispose();
     presetBar.dispose();
     products.dispose();
+    shelfTags.dispose();
     npcs.dispose();
     peer.dispose();
     scene.remove(highlight);

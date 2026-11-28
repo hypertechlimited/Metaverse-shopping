@@ -6,7 +6,7 @@ Corner of a *galli* intersection, Mangal Bazar, Patan, Lalitpur.
 **Live on GitHub Pages:** [https://hypertechlimited.github.io/Metaverse-shopping/](https://hypertechlimited.github.io/Metaverse-shopping/)
 (automatic deploy on every merge to `main` — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md))
 
-**Status — release candidate (M5.5):** 74 draw calls at DPR-1 steady state (budget ≤ 80), 2.50 MB payload (518 KB gzipped), PWA installable with offline shell, INP + error telemetry under `?debug=1`, adaptive DPR governor, WebGL context-loss recovery, 20/20 golden suite green. **Next: M6–M9** — shelf merchandising (facings + price rails), fixture styles (Traditional / Modern / Mini Super-Mart), aim-dot reticle + mobile touch UX, label atlas with inspired-by packaging. See [docs/RETAIL-DESIGN.md](docs/RETAIL-DESIGN.md) and [docs/TASKS.md](docs/TASKS.md).
+**Status — release candidate (M6):** 83 draw calls at DPR-1 steady state (budget ≤ 88), faced + priced shelves — 3-tier gondola, instanced extra facings, stock-truthful depletion, Devanagari price rails with sold-out stamps; 2.50 MB payload, PWA installable with offline shell, INP + error telemetry under `?debug=1`, adaptive DPR governor, WebGL context-loss recovery, 21/21 golden suite green. **Next: M7–M9** — fixture styles (Traditional / Modern / Mini Super-Mart), aim-dot reticle + mobile touch UX, label atlas with inspired-by packaging. See [docs/RETAIL-DESIGN.md](docs/RETAIL-DESIGN.md), [docs/M6-EXECUTION-PLAN.md](docs/M6-EXECUTION-PLAN.md) and [docs/TASKS.md](docs/TASKS.md).
 
 ## What This Is
 
@@ -45,8 +45,8 @@ ES modules + import maps require HTTP — `file://` will not work.
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, module boundaries, data flow |
 | [docs/GUIDELINES.md](docs/GUIDELINES.md) | Coding rules, design rules, performance budgets |
-| [docs/TASKS.md](docs/TASKS.md) | Milestone breakdown M0–M5 done, M6–M9 planned with acceptance criteria |
-| [docs/M6-EXECUTION-PLAN.md](docs/M6-EXECUTION-PLAN.md) | Binding M6 execution plan: planogram, gondola, instanced facings, price-rail atlas, test gates |
+| [docs/TASKS.md](docs/TASKS.md) | Milestone breakdown M0–M6 done, M7–M9 planned with acceptance criteria |
+| [docs/M6-EXECUTION-PLAN.md](docs/M6-EXECUTION-PLAN.md) | M6 execution plan + as-built record: planogram, gondola, instanced facings, price-rail atlas, test gates |
 | [docs/RETAIL-DESIGN.md](docs/RETAIL-DESIGN.md) | M6–M9 design brief: shelf merchandising, fixture styles, aim-dot reticle, mobile touch, label atlas + web research |
 | [docs/TESTING.md](docs/TESTING.md) | Golden test protocol and verification gates |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | GitHub Pages deploy workflow, base-path and payload rules |

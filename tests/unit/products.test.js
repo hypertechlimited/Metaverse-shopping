@@ -2,9 +2,10 @@ import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import { buildProducts, productPlacements, zoneOfSku, PRODUCT_DRAW_CALL_BUDGET, SHAPE_HEIGHTS, SHAPE_RADIUS, PRODUCTS } from '../../src/world/products.js';
 import { CATALOG } from '../../src/commerce/catalog.js';
-import { PRODUCT_SPOTS, ZONES, OBSTACLES } from '../../src/world/layout.js';
+import { PRODUCT_SPOTS, ZONES, OBSTACLES, RACK_TIERS, SKU_TIERS } from '../../src/world/layout.js';
 import { ARCHITECTURE } from '../../src/world/architecture.js';
 import { THUMBS } from '../../src/world/thumbs.js';
+import { planFor, liveUnits } from '../../src/world/shelfPlanogram.js';
 
 /** @param {number} x @param {number} z @param {{ minX: number, maxX: number, minZ: number, maxZ: number }} box @returns {boolean} */
 function insideBox(x, z, box) {
@@ -19,6 +20,11 @@ describe('product spots (layout truth)', () => {
   it('rests every product on its zone surface height', () => {
     for (const sku of CATALOG) {
       const spot = PRODUCT_SPOTS[sku.id];
+      if (sku.zone === 'Back Rack') {
+        const tierY = RACK_TIERS['Back Rack'][SKU_TIERS[sku.id]];
+        expect(spot[1]).toBe(tierY);
+        continue;
+      }
       expect(spot[1]).toBe(ZONES[sku.zone].topY);
     }
   });
@@ -124,13 +130,89 @@ describe('buildProducts scene graph', () => {
     for (const proxy of built.proxies) {
       const spot = PRODUCT_SPOTS[/** @type {string} */ (proxy.userData.product)];
       expect(proxy.position.x).toBeCloseTo(spot[0], 5);
-      expect(proxy.position.z).toBeCloseTo(spot[2], 5);
       expect(proxy.position.y).toBeGreaterThan(spot[1]);
     }
   });
 
   it('disposes geometry and removes everything from the scene', () => {
     expect(scene.children.length).toBeGreaterThan(0);
+    built.dispose();
+    expect(scene.children.length).toBe(0);
+  });
+});
+
+describe('instanced facings', () => {
+  const scene = new THREE.Scene();
+  const built = buildProducts(scene);
+  const plans = planFor(CATALOG);
+
+  it('creates one InstancedMesh per shape class with multi-facing SKUs, never two', () => {
+    const names = built.facingMeshes.map((mesh) => mesh.name);
+    for (const name of names) expect(name).toMatch(/^facings-/);
+    expect(new Set(names).size).toBe(names.length);
+    expect(built.facingMeshes.length).toBeLessThanOrEqual(7);
+    for (const mesh of built.facingMeshes) {
+      expect(mesh.count).toBe(0);
+      expect(mesh.instanceMatrix.count).toBeGreaterThan(0);
+    }
+    expect(built.facingMeshes.length).toBeGreaterThan(0);
+  });
+
+  it('populates facings from the seeded stock map', () => {
+    const stockMap = Object.fromEntries(CATALOG.map((sku) => [sku.id, sku.stock]));
+    built.setStock(stockMap);
+    const expectedExtras = CATALOG.reduce((sum, sku) => {
+      const plan = plans.get(sku.id);
+      if (!plan) throw new Error(`planogram must cover: ${sku.id}`);
+      return sum + liveUnits(plan, sku.stock) - 1;
+    }, 0);
+    const placed = built.facingMeshes.reduce((sum, mesh) => sum + mesh.count, 0);
+    expect(placed).toBe(expectedExtras);
+    expect(placed).toBeGreaterThan(0);
+  });
+
+  it('empties facings and widens nothing when stock hits zero', () => {
+    const stockMap = Object.fromEntries(CATALOG.map((sku) => [sku.id, sku.stock]));
+    const target = CATALOG.find((sku) => sku.id === 'nun-1kg');
+    if (!target) throw new Error('catalog must contain nun-1kg');
+    built.setStock({ ...stockMap, 'nun-1kg': 0 });
+    const remaining = built.facingMeshes.reduce((sum, mesh) => sum + mesh.count, 0);
+    const full = Object.fromEntries(CATALOG.map((sku) => [sku.id, sku.stock]));
+    built.setStock(full);
+    const base = built.facingMeshes.reduce((sum, mesh) => sum + mesh.count, 0);
+    built.setStock({ ...stockMap, 'nun-1kg': 0 });
+    const nunPlan = plans.get('nun-1kg');
+    if (!nunPlan) throw new Error('planogram must cover nun-1kg');
+    expect(base - remaining).toBe(liveUnits(nunPlan, target.stock) - 1);
+    const proxy = built.proxies.find((entry) => entry.userData.product === 'nun-1kg');
+    if (!proxy) throw new Error('missing nun proxy');
+    expect(proxy.scale.z).toBeCloseTo(2 * SHAPE_RADIUS.pouch, 5);
+  });
+
+  it('rebuilds a zone mesh without sold-out SKUs and restores them on restock', () => {
+    const stockMap = Object.fromEntries(CATALOG.map((sku) => [sku.id, sku.stock]));
+    built.setStock({ ...stockMap, 'sakkhar-1kg': 0 });
+    const rack = built.zoneMeshes.find((mesh) => mesh.name === 'products-Back Rack');
+    if (!rack) throw new Error('missing rack mesh');
+    const depleted = rack.geometry.attributes.position.count;
+    built.setStock({ ...stockMap, 'sakkhar-1kg': 5 });
+    const restored = rack.geometry.attributes.position.count;
+    expect(depleted).toBeLessThan(restored);
+  });
+
+  it('grows rack pick proxies over the full facing block, singles stay spot-centered', () => {
+    const stockMap = Object.fromEntries(CATALOG.map((sku) => [sku.id, sku.stock]));
+    built.setStock(stockMap);
+    const nun = built.proxies.find((entry) => entry.userData.product === 'nun-1kg');
+    const gungdi = built.proxies.find((entry) => entry.userData.product === 'gungdi-ghee');
+    if (!nun || !gungdi) throw new Error('missing proxies');
+    expect(nun.scale.x).toBeCloseTo(2 * (SHAPE_RADIUS.pouch + 0.02 + SHAPE_RADIUS.pouch), 5);
+    expect(gungdi.scale.x).toBeCloseTo(2 * (SHAPE_RADIUS.pot + 0.02), 5);
+    expect(gungdi.position.z).toBeCloseTo(PRODUCT_SPOTS['gungdi-ghee'][2], 5);
+    expect(nun.position.z).toBeLessThan(PRODUCT_SPOTS['nun-1kg'][2]);
+  });
+
+  it('disposes instanced meshes with the rest of the scene graph', () => {
     built.dispose();
     expect(scene.children.length).toBe(0);
   });

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { OBSTACLES } from './layout.js';
+import { GONDOLA, OBSTACLES, RACK_TIERS } from './layout.js';
 import { makeArt, makeTexture, makeBump, drawZinc, drawZincBump, drawZincRoughness, drawAnkhiJhyal, drawPasalBoard, loadDevanagariFont } from './art.js';
 import { placedGeometry, mergedParts, addMergedMesh } from './merge.js';
 
@@ -364,6 +364,41 @@ function counterTopGeometry() {
 }
 
 /** @param {THREE.Scene} scene @param {THREE.WebGLRenderer} renderer */
+/**
+ * Three-tier gondola under the Back Rack: boards (top surface = tier Y),
+ * front lips, and end uprights — one merged mesh, one draw call.
+ * @param {THREE.Scene} scene
+ * @param {THREE.MeshStandardMaterial} timberMaterial
+ */
+function buildGondola(scene, timberMaterial) {
+  const rack = OBSTACLES.find((box) => box.name === 'Back Shelf Rack');
+  if (!rack) throw new Error('layout.js must define the Back Shelf Rack');
+  const tiers = RACK_TIERS['Back Rack'];
+  if (!tiers) throw new Error('layout.js must define Back Rack tiers');
+  const boardZCenter = rack.minZ + 0.03 + GONDOLA.boardDepth / 2;
+  const length = rack.maxX - rack.minX;
+  /** @type {THREE.BufferGeometry[]} */
+  const parts = [];
+  for (const tierY of Object.values(tiers)) {
+    parts.push(placedGeometry(
+      new THREE.BoxGeometry(length, GONDOLA.boardThickness, GONDOLA.boardDepth),
+      { position: [(rack.minX + rack.maxX) / 2, tierY - GONDOLA.boardThickness / 2, boardZCenter] },
+    ));
+    parts.push(placedGeometry(
+      new THREE.BoxGeometry(length, GONDOLA.lipHeight, GONDOLA.lipThickness),
+      { position: [(rack.minX + rack.maxX) / 2, tierY + GONDOLA.lipHeight / 2, rack.maxZ - 0.07] },
+    ));
+  }
+  for (const x of [rack.minX + GONDOLA.uprightWidth / 2, rack.maxX - GONDOLA.uprightWidth / 2]) {
+    parts.push(placedGeometry(
+      new THREE.BoxGeometry(GONDOLA.uprightWidth, GONDOLA.topY + GONDOLA.lipHeight, GONDOLA.boardDepth),
+      { position: [x, (GONDOLA.topY + GONDOLA.lipHeight) / 2, boardZCenter] },
+    ));
+  }
+  addMergedMesh(scene, mergedParts(parts), timberMaterial, { name: 'gondola' });
+}
+
+/** @param {THREE.Scene} scene @param {THREE.WebGLRenderer} renderer */
 export function buildArchitecture(scene, renderer) {
   const walls = wallBoxes();
 
@@ -391,6 +426,7 @@ export function buildArchitecture(scene, renderer) {
   });
   buildAwning(scene, zincMaterial, walls);
   buildThaam(scene, timberMaterial, walls);
+  buildGondola(scene, timberMaterial);
   buildShutterHousings(scene, shutterMaterial, walls);
   addMergedMesh(scene, mergedParts([...pediGeometries(walls), ...pillarGeometries()]), stoneMaterial, {
     name: 'pedi-pillar-stone',

@@ -56,16 +56,21 @@ patterns, serdarozden guide):
 ```
 facingPlan(catalog, zoneTiers) -> Map<skuId, { facings, depthUnits, tier, columns }>
 ```
-Rules: facings 2–4 by stock velocity (stock ≥ 30 → 4, ≥ 15 → 3, else 2); staples on the
-eye-level middle tier (tier assignment table in `layout.js` `ZONE_TIERS` — geometry truth
-stays in one file); zero stock → `facings: 0`. Deterministic, no randomness.
+Rules (as built — revised from the ≥30/≥15 prediction after overlap-testing the rack
+tiers): a front row of **2 across** when initial stock ≥ 25, plus **depth rows** behind at
+z-gap 0.37 when stock ≥ 30 (Back Rack only, toward the wall); hero-first slot order
+(front-left → front-right → back-left → back-right); staples on the eye-level middle tier
+(tier assignment in `layout.js` `SKU_TIERS` — geometry truth stays in one file); zero
+stock → empty facing set. Deterministic, no randomness.
 
 **D2 — Hero + instanced siblings (draw-call frugal).** The existing 4 zone merged meshes
 stay — each SKU's spot unit is **facing #1** with full two-tone detail. Additional facings
-are `InstancedMesh` per shape class (7 classes → 7 draw calls) with single-part silhouettes
-and `setColorAt` body colors: background units read correctly at shelf distance without
-accent caps. Rationale: 17 per-SKU instanced meshes would cost 17 draw calls; 7 shape
-classes cost 7; a merged mesh cannot deplete per SKU.
+are `InstancedMesh` per shape class with single-part silhouettes and `setColorAt` body
+colors: background units read correctly at shelf distance without accent caps.
+As built, only **pouch, box and bundle** have multi-facing SKUs, so only 3 instanced meshes
+are created (capacity precomputed from the planogram); the other 4 classes keep their
+single hero unit in the zone mesh and need no instanced mesh at all. A merged mesh cannot
+deplete per SKU; a per-SKU InstancedMesh would cost 17 draw calls.
 
 **D3 — Stock-truthful depletion.** New subscriber: `products.setStock(stockMap)` +
 `shelves.update(stockMap)`. Instanced extra-facings count for a SKU =
@@ -96,10 +101,11 @@ OBSTACLES unchanged (same rack AABB). Spot/catalog parity tests update with it.
 | Item | Δ calls |
 |---|---|
 | Current steady state (M5.5) | 74 |
-| InstancedMesh per shape class (pouch, sack, pot, bottle, bar, bundle, box) | +7 |
+| InstancedMesh for multi-facing shape classes only (pouch, box, bundle) | +3 |
 | Price-tag rail merged mesh (one atlas material) | +1 |
 | Gondola tier boards + lips + uprights (merged) | +1 |
-| **M6 steady state (measured gate)** | **≤ 83** |
+| Shadow passes from the new casters | +4 |
+| **M6 steady state (measured)** | **83** |
 
 Budget: 80 → **88** (headroom 5 for the transient BoxHelper already counted in M4).
 Doc-first rule: `docs/GUIDELINES.md` budget line + `tests/golden/perf.spec.js` assertion
@@ -161,3 +167,23 @@ change in the same PR as the code. Payload delta: two canvas textures (atlas + n
    OBSTACLES unchanged. ✅ unit
 5. Hover/inspector/gold BoxHelper behavior unchanged on faced rows. ✅ golden
 6. **Golden:** stocked-rack screenshot + sell-out screenshot, vision-reviewed. ✅
+
+## 10. As-built (2026-11-28, T1–T8 complete)
+
+- `src/world/shelfPlanogram.js` — pure planogram: `planFor`, `liveUnits`, `facingSlots`,
+  `proxyExtent`, `frontZ`; constants `acrossStockThreshold 25`, `depthStockThreshold 30`,
+  `depthGapZ 0.37`, `edgeMargin 0.02`, `rackZones ['Back Rack']`.
+- `src/world/products.js` — `buildProducts()` returns `{ zoneMeshes, proxies, facingMeshes,
+  setStock, dispose }`; per-class InstancedMesh with precomputed capacity; depletion on
+  store events (zero render-loop allocation); zone merged mesh rebuilds only on 0-crossing.
+- `src/world/architecture.js` — `buildGondola()` merges 3 boards + 3 lips + 2 uprights into
+  one mesh; `src/world/layout.js` — `RACK_TIERS`, `SKU_TIERS`, `RACK_FRONT_Z`, `GONDOLA`,
+  `TAG_RAILS`; Back Rack spots re-tiered at z − 3.75.
+- `src/world/shelfTags.js` — 2048×128 atlas, 3 Back Rack tier rails + Counter + Front Pedi
+  rails merged into one mesh; per-cell dirty redraw; Devanagari font-load full redraw;
+  sold-out cells stamp 'सकियो' and drop the price.
+- Measured: **83 draw calls** DPR-1 steady state (Overview and explore agree), payload
+  unchanged, tsc clean, vitest 362/362, all 21 goldens green including the new
+  `tests/golden/merchandising.spec.js`.
+- Vision review: tier boards + lips render, facings sit without overlap/floating, tag rail
+  legible with red prices; sell-out leaves a visible gap on the eye tier.

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const DRAW_CALL_BUDGET = 80;
+const DRAW_CALL_BUDGET = 88;
 const PAYLOAD_BUDGET_BYTES = 5 * 1024 * 1024;
 const FOUR_G = { latencyMs: 100, downloadBytesPerSecond: 750_000, uploadBytesPerSecond: 250_000 };
 const FOUR_G_BUDGET_SECONDS = 5;

@@ -37,7 +37,7 @@ Enforcement: the Vision Reviewer role (see `SWARM-EXECUTION.md`) checks golden s
 
 | Metric | Budget |
 |---|---|
-| Draw calls per frame | ≤ 80 (use `InstancedMesh` past 50 SKUs) |
+| Draw calls per frame | ≤ 88 (raised 80 → 88 in M6 doc-first: shelf facings add 7 `InstancedMesh` shape classes + 1 price-rail + 1 gondola; see `docs/M6-EXECUTION-PLAN.md` §5) |
 | Total payload | ≤ 5 MB |
 | Frame rate | 60 FPS desktop, ≥ 30 FPS mid-range Android |
 | INP (Interaction to Next Paint) | < 200 ms on all HUD interactions |

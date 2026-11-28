@@ -28,18 +28,47 @@ export const ZONES = {
   Corner: { label: 'Corner', np: 'कुनो', surface: 'Street', topY: 0 },
 };
 
+/** @type {Record<string, Record<string, number>>} zone → tier name → shelf board top Y (where products rest) */
+export const RACK_TIERS = {
+  'Back Rack': { bottom: 0.55, eye: 1.0, top: 1.45 },
+};
+
+/** @type {Record<string, string>} sku id → tier name for zoned rack SKUs */
+export const SKU_TIERS = {
+  'gungdi-ghee': 'bottom',
+  'nun-1kg': 'eye',
+  'sakkhar-1kg': 'eye',
+  'musuro-dal-1kg': 'eye',
+  'besaar-200g': 'top',
+  'khorsani-100g': 'top',
+  'masyaura-250g': 'top',
+};
+
+/** Back Rack spot z: front row sits one pot-radius clear of the gondola front lip */
+export const RACK_FRONT_Z = -3.75;
+
+/** @type {{ boardThickness: number, boardDepth: number, lipHeight: number, lipThickness: number, uprightWidth: number, topY: number }} */
+export const GONDOLA = {
+  boardThickness: 0.05,
+  boardDepth: 0.8,
+  lipHeight: 0.05,
+  lipThickness: 0.02,
+  uprightWidth: 0.07,
+  topY: 1.45,
+};
+
 /** @type {Record<string, [number, number, number]>} sku id → base-center spot; y is the resting surface height */
 export const PRODUCT_SPOTS = {
   'ilam-tea-250g': [-2.35, 1.07, 0.28],
   'mombatti-4pack': [-1.9, 1.07, 0.28],
   'salai-10pack': [-1.45, 1.07, 0.28],
-  'gungdi-ghee': [-4.0, 1.0, -4.0],
-  'nun-1kg': [-3.3, 1.0, -4.0],
-  'sakkhar-1kg': [-2.45, 1.0, -4.0],
-  'musuro-dal-1kg': [-1.6, 1.0, -4.0],
-  'besaar-200g': [-0.75, 1.0, -4.0],
-  'khorsani-100g': [0.0, 1.0, -4.0],
-  'masyaura-250g': [0.6, 1.0, -4.0],
+  'gungdi-ghee': [-4.0, 0.55, -3.75],
+  'nun-1kg': [-3.3, 1.0, -3.75],
+  'sakkhar-1kg': [-2.45, 1.0, -3.75],
+  'musuro-dal-1kg': [-1.6, 1.0, -3.75],
+  'besaar-200g': [-0.75, 1.45, -3.75],
+  'khorsani-100g': [0.0, 1.45, -3.75],
+  'masyaura-250g': [0.6, 1.45, -3.75],
   'waiwai-5pack': [1.975, 0.18, -1.6],
   'gundruk-250g': [1.975, 0.18, -1.0],
   'sukuti-250g': [1.975, 0.18, -0.4],
@@ -47,6 +76,13 @@ export const PRODUCT_SPOTS = {
   'marsyangdi-rice-5kg': [2.15, 0, 2.05],
   'toriko-tel-1l': [2.75, 0, 1.95],
   'chiura-1kg': [2.05, 0, 2.65],
+};
+
+/** Shelf-edge price-tag rail strips: one per surfaced zone front, derived from the same boxes as the fixtures */
+export const TAG_RAILS = {
+  railHeight: 0.09,
+  proudOfLip: 0.015,
+  zones: ['Back Rack', 'Counter', 'Front Pedi'],
 };
 
 export const PASALE_DAI_POSITION = [-0.8, 0, -0.5];
