@@ -31,6 +31,10 @@ test('golden presence — joystick mounts, click-to-move walks the nav path', as
 
   await expect(page.locator('.joystick')).toBeVisible();
 
+  await page.waitForFunction(() => document.body.dataset.peerX !== undefined, null, { timeout: 10000 });
+  const peerX = await page.evaluate(() => parseFloat(document.body.dataset.peerX ?? ''));
+  expect(Number.isFinite(peerX)).toBe(true);
+
   const groundTargets = [
     [620, 500],
     [400, 520],

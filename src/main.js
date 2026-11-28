@@ -672,8 +672,13 @@ function boot() {
       for (const packet of peerFeed.poll(timeMs)) addSample(peerBuffer, packet);
       trimBuffer(peerBuffer, timeMs);
       const peerPose = sampleAt(peerBuffer, timeMs);
-      if (peerPose) peer.apply(peerPose);
-      else peer.setVisible(false);
+      if (peerPose) {
+        peer.apply(peerPose);
+        body.dataset.peerX = peerPose.x.toFixed(3);
+        body.dataset.peerZ = peerPose.z.toFixed(3);
+      } else {
+        peer.setVisible(false);
+      }
     } else {
       peer.setVisible(false);
     }
