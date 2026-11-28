@@ -46,6 +46,7 @@ ES modules + import maps require HTTP — `file://` will not work.
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, module boundaries, data flow |
 | [docs/GUIDELINES.md](docs/GUIDELINES.md) | Coding rules, design rules, performance budgets |
 | [docs/TASKS.md](docs/TASKS.md) | Milestone breakdown M0–M5 done, M6–M9 planned with acceptance criteria |
+| [docs/M6-EXECUTION-PLAN.md](docs/M6-EXECUTION-PLAN.md) | Binding M6 execution plan: planogram, gondola, instanced facings, price-rail atlas, test gates |
 | [docs/RETAIL-DESIGN.md](docs/RETAIL-DESIGN.md) | M6–M9 design brief: shelf merchandising, fixture styles, aim-dot reticle, mobile touch, label atlas + web research |
 | [docs/TESTING.md](docs/TESTING.md) | Golden test protocol and verification gates |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | GitHub Pages deploy workflow, base-path and payload rules |

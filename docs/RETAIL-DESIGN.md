@@ -22,7 +22,7 @@ build (products are 17 vertex-colored shapes floating at `PRODUCT_SPOTS` on bare
   per shape class (one instance per unit), keeping draw calls near zero while the shelf
   looks stocked. Front row sits flush to the shelf lip; a plain-colored **back-row filler**
   block (cardboard-case look) hides emptiness behind the facings — the standard trick that
-  makes shallow product sets read full.
+  makes shallow product sets read full. Full binding plan: `docs/M6-EXECUTION-PLAN.md`.
 
 ### 1.2 Shelf furniture (where the product sits)
 A retail **gondola** = base deck + uprights + adjustable shelf tiers + a **shelf-edge rail**.
@@ -149,7 +149,7 @@ nominative use; the packaging art must stay our own.
 
 | Milestone | Scope (full AC in TASKS.md) |
 |---|---|
-| **M6** | Shelf & merchandising: planogram facings, shelf-edge price-tag rails, depth fill, stock-truthful emptying |
+| **M6** | Shelf & merchandising: planogram facings, 3-tier gondola, shelf-edge price-tag rails, stock-truthful emptying — binding plan in `docs/M6-EXECUTION-PLAN.md` |
 | **M7** | Fixture style variants: Traditional / Modern / Mini Super-Mart (+ budget raise, doc-first) |
 | **M8** | Aim-dot reticle + re-anchored tooltip + mobile tap/pinch/haptics/bottom sheet |
 | **M9** | Label atlas: inspired-by packaging art + catalog v2 price refresh from researched sources |

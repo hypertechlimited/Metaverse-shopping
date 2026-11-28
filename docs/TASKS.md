@@ -97,13 +97,14 @@ Each task has an owner-ready scope, files touched, and **acceptance criteria (AC
 
 Design input: **`docs/RETAIL-DESIGN.md`** (web-researched shelf merchandising, fixture styles, reticle, touch, label art). Sequencing per `AGENTS.md` rule 6: commerce/inventory truth first, interaction second, visual layers last.
 
-## M6 — Shelf & Merchandising Truth (planned)
-**Scope:** `world/shelfPlanogram.js` — pure `facingPlan()` over `CATALOG`+`stockMap` (facings/rows/depth-fill per SKU, fast movers get more facings); facings rendered as `InstancedMesh` per shape class (front row flush to shelf lip, labels outward, cardboard-case back-row filler); shelf-edge **price-tag rails** — one canvas atlas (Devanagari name + `formatRupees` per SKU) on one merged strip mesh per rack, redrawn on stock/price change; stock-truthful shelves: `stockMap[id] === 0` → facings empty + tag greys out; shelf boards gain thickness + front lip via `world/merge.js`. New OBSTACLES entries (if any) derive from `layout.js` only.
-**AC:**
-- `facingPlan()` unit-tested: every SKU covered, facings ∝ stock, zero-stock → 0 facings, no spot overlap.
-- InstancedMesh count ≤ 1 per shape class; total added draw calls ≤ 6 (74 → ≤ 80, no budget raise).
-- Price-tag atlas redrew within one store event after a purchase (tag greys on sell-out) — unit + golden.
-- **Golden:** rack screenshot showing multi-facing rows + price rails; sell-out screenshot showing an emptied facing set.
+## M6 — Shelf & Merchandising Truth (planned — **expanded, binding execution plan in `docs/M6-EXECUTION-PLAN.md`**)
+**Scope:** pure `facingPlan()` planogram over `CATALOG` (facings by stock velocity, eye-level staples per retail research); real 3-tier gondola furniture (boards + lips + uprights via `world/merge.js`, re-tiered `PRODUCT_SPOTS` in `layout.js` only); extra facings as one `InstancedMesh` per shape class (7 classes, hero spot unit = facing #1 keeps the merged zone meshes); stock-truthful depletion (extra facings vanish per stock, zone mesh rebuilds on 0-crossing, tags grey out); shelf-edge **price-tag rails** — one 2048² canvas atlas (Devanagari name + `formatRupees`) on one merged mesh, FontFace-load redraw per the pasal-board pattern; pick proxies widen to the facing row.
+**AC (full list in the plan doc §9):**
+- `facingPlan()` unit-tested: all 17 SKUs, facings ∝ stock, zero-stock → 0, no same-tier overlap, deterministic.
+- ≤ 1 InstancedMesh per shape class; steady state ≤ 88 draw calls at DPR-1 — **budget raise 80 → 88 doc-first** (GUIDELINES + perf.spec in the same PR; researched cost: +7 instanced +1 rail +1 gondola).
+- Price-tag atlas: 17 non-overlapping cells, greys out on sell-out, redraws after Devanagari font load.
+- 3 tiers with staples at eye level; hover/inspector unchanged on faced rows.
+- **Golden:** stocked-rack screenshot (multi-facing rows + legible price rail) + sell-out screenshot (emptied facings + greyed tag), vision-reviewed.
 
 ## M7 — Fixture Styles: Traditional / Modern / Mini Super-Mart (planned, doc-first budget raise)
 **Scope:** `FIXTURE_STYLES` token record (colors, laminate vs wood, rail hue, light temperature) beside `world/theme.js`; three authored fixture sets — Traditional (current), Modern (white gondola + LED shelf lips + digital rails), Mini Super-Mart (double-sided aisle gondolas, end caps, dump-bin chatti, entrance basket stack, ceiling fixture grid) — all through `world/merge.js` `mergedParts`; style switch is one store flag; recommended default = traditional shell + super-mart interior (authentic Kathmandu read). **Doc-change-first:** budget raise 80 → 96 must land in `docs/GUIDELINES.md` + `tests/golden/perf.spec.js` in the same PR, re-measured on the device matrix.
