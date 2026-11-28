@@ -24,6 +24,27 @@ export const TAG_ATLAS = {
 const SLAB_FRONT_GROW = 0.07;
 const RAIL_DROP = 0.01;
 
+/** @param {number} hex @returns {string} */
+function cssHex(hex) {
+  return `#${hex.toString(16).padStart(6, '0')}`;
+}
+
+/**
+ * Pure palette mapping: fixture-style tag tokens → canvas colors. Defaults to
+ * the traditional paper so existing call sites keep their look.
+ * @param {import('./fixtureStyles.js').TagTokens} [tokens]
+ */
+export function tagPalette(tokens = { paper: 0xf5f2ea, ink: 0x1c1814, price: 0x991b1b, soldOut: 0x8a8578 }) {
+  return {
+    background: cssHex(tokens.paper),
+    soldOutBackground: cssHex(tokens.soldOut),
+    ink: cssHex(tokens.ink),
+    price: cssHex(tokens.price),
+    soldOutInk: cssHex(tokens.soldOut),
+    hairline: `rgba(${(tokens.ink >> 16) & 255}, ${(tokens.ink >> 8) & 255}, ${tokens.ink & 255}, 0.28)`,
+  };
+}
+
 /** @typedef {{ skuId: string, cell: number, face: '+z' | '+x', center: [number, number, number], length: number }} RailSegment */
 
 /**
@@ -99,16 +120,17 @@ export function tagCellRect(index, total, width = TAG_ATLAS.width, height = TAG_
  * @param {{ nameNp: string }} sku
  * @param {string} priceLabel
  * @param {boolean} soldOut
+ * @param {ReturnType<typeof tagPalette>} [palette]
  */
-export function drawTagCell(ctx, rect, sku, priceLabel, soldOut) {
+export function drawTagCell(ctx, rect, sku, priceLabel, soldOut, palette = tagPalette()) {
   const pad = rect.h * 0.08;
   ctx.save();
   ctx.beginPath();
   ctx.rect(rect.x, rect.y, rect.w, rect.h);
   ctx.clip();
-  ctx.fillStyle = soldOut ? TAG_ATLAS.soldOutBackground : TAG_ATLAS.background;
+  ctx.fillStyle = soldOut ? palette.soldOutBackground : palette.background;
   ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-  ctx.strokeStyle = soldOut ? TAG_ATLAS.soldOutInk : TAG_ATLAS.hairline;
+  ctx.strokeStyle = soldOut ? palette.soldOutInk : palette.hairline;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(rect.x, rect.y + 1);
@@ -118,10 +140,10 @@ export function drawTagCell(ctx, rect, sku, priceLabel, soldOut) {
   ctx.stroke();
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'center';
-  ctx.fillStyle = soldOut ? TAG_ATLAS.soldOutInk : TAG_ATLAS.ink;
+  ctx.fillStyle = soldOut ? palette.soldOutInk : palette.ink;
   ctx.font = `${TAG_ATLAS.nameSize}px ${DEVANAGARI_FONT_STACK}`;
   ctx.fillText(sku.nameNp, rect.x + rect.w / 2, rect.y + rect.h * 0.32, rect.w - pad * 2);
-  ctx.fillStyle = soldOut ? TAG_ATLAS.soldOutInk : TAG_ATLAS.price;
+  ctx.fillStyle = soldOut ? palette.soldOutInk : palette.price;
   ctx.font = `${TAG_ATLAS.priceSize}px ${DEVANAGARI_FONT_STACK}`;
   ctx.fillText(soldOut ? 'सकियो' : priceLabel, rect.x + rect.w / 2, rect.y + rect.h * 0.72, rect.w - pad * 2);
   ctx.restore();
@@ -134,18 +156,29 @@ export function drawTagCell(ctx, rect, sku, priceLabel, soldOut) {
  * vendored Devanagari font loads.
  * @param {THREE.Scene} scene
  * @param {THREE.WebGLRenderer} renderer
- * @returns {{ setStock: (stockMap: Record<string, number>) => void, dispose: () => void }}
+ * @param {import('./fixtureStyles.js').TagTokens} [tagTokens]
+ * @returns {{ setStock: (stockMap: Record<string, number>) => void, restyle: (tagTokens: import('./fixtureStyles.js').TagTokens) => void, dispose: () => void }}
  */
-export function buildShelfTags(scene, renderer) {
+export function buildShelfTags(scene, renderer, tagTokens) {
   const segments = railSegments(CATALOG);
   const cellOfSku = new Map(segments.map((segment) => [segment.skuId, segment.cell]));
   /** @type {Map<string, boolean>} */
   const soldOutState = new Map();
+  let palette = tagPalette(tagTokens);
+
+  const drawAll = () => {
+    const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
+    for (const segment of segments) {
+      const sku = /** @type {typeof CATALOG[number]} */ (CATALOG.find((entry) => entry.id === segment.skuId));
+      drawTagCell(ctx, tagCellRect(segment.cell, CATALOG.length), sku, formatRupees(sku.variants[0].price), soldOutState.get(segment.skuId) === true, palette);
+    }
+    texture.needsUpdate = true;
+  };
 
   const canvas = makeArt(TAG_ATLAS.width, TAG_ATLAS.height, (ctx) => {
     for (const segment of segments) {
       const sku = /** @type {typeof CATALOG[number]} */ (CATALOG.find((entry) => entry.id === segment.skuId));
-      drawTagCell(ctx, tagCellRect(segment.cell, CATALOG.length), sku, formatRupees(sku.variants[0].price), false);
+      drawTagCell(ctx, tagCellRect(segment.cell, CATALOG.length), sku, formatRupees(sku.variants[0].price), false, palette);
     }
   });
   const texture = makeTexture(canvas, renderer);
@@ -185,18 +218,18 @@ export function buildShelfTags(scene, renderer) {
 
   loadDevanagariFont().then((loaded) => {
     if (!loaded) return;
-    const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
-    for (const segment of segments) {
-      const sku = /** @type {typeof CATALOG[number]} */ (CATALOG.find((entry) => entry.id === segment.skuId));
-      drawTagCell(ctx, tagCellRect(segment.cell, CATALOG.length), sku, formatRupees(sku.variants[0].price), soldOutState.get(sku.id) === true);
-    }
-    texture.needsUpdate = true;
+    drawAll();
   });
 
   return {
     /** @param {Record<string, number>} stockMap */
     setStock(stockMap) {
       redrawWhere((sku) => (stockMap[sku.id] ?? 0) <= 0);
+    },
+    /** @param {import('./fixtureStyles.js').TagTokens} tokens */
+    restyle(tokens) {
+      palette = tagPalette(tokens);
+      drawAll();
     },
     dispose() {
       scene.remove(mesh);

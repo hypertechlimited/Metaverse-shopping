@@ -363,14 +363,14 @@ function counterTopGeometry() {
   );
 }
 
-/** @param {THREE.Scene} scene @param {THREE.WebGLRenderer} renderer */
 /**
  * Three-tier gondola under the Back Rack: boards (top surface = tier Y),
- * front lips, and end uprights — one merged mesh, one draw call.
+ * front lips, and end uprights — one merged mesh, one draw call. Owns its
+ * material so M7 fixture-style restyles never recolor the shared timber thaam.
  * @param {THREE.Scene} scene
- * @param {THREE.MeshStandardMaterial} timberMaterial
+ * @returns {THREE.MeshStandardMaterial}
  */
-function buildGondola(scene, timberMaterial) {
+function buildGondola(scene) {
   const rack = OBSTACLES.find((box) => box.name === 'Back Shelf Rack');
   if (!rack) throw new Error('layout.js must define the Back Shelf Rack');
   const tiers = RACK_TIERS['Back Rack'];
@@ -395,7 +395,12 @@ function buildGondola(scene, timberMaterial) {
       { position: [x, (GONDOLA.topY + GONDOLA.lipHeight) / 2, boardZCenter] },
     ));
   }
-  addMergedMesh(scene, mergedParts(parts), timberMaterial, { name: 'gondola' });
+  const gondolaMaterial = new THREE.MeshStandardMaterial({
+    color: ARCHITECTURE_COLORS.timber,
+    roughness: 0.82,
+  });
+  addMergedMesh(scene, mergedParts(parts), gondolaMaterial, { name: 'gondola' });
+  return gondolaMaterial;
 }
 
 /** @param {THREE.Scene} scene @param {THREE.WebGLRenderer} renderer */
@@ -426,7 +431,7 @@ export function buildArchitecture(scene, renderer) {
   });
   buildAwning(scene, zincMaterial, walls);
   buildThaam(scene, timberMaterial, walls);
-  buildGondola(scene, timberMaterial);
+  buildGondola(scene);
   buildShutterHousings(scene, shutterMaterial, walls);
   addMergedMesh(scene, mergedParts([...pediGeometries(walls), ...pillarGeometries()]), stoneMaterial, {
     name: 'pedi-pillar-stone',

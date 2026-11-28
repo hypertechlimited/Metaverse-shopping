@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { CATALOG } from '../../src/commerce/catalog.js';
 import { TAG_RAILS } from '../../src/world/layout.js';
-import { TAG_ATLAS, railSegments, tagCellRect, drawTagCell } from '../../src/world/shelfTags.js';
+import { TAG_ATLAS, railSegments, tagCellRect, drawTagCell, tagPalette } from '../../src/world/shelfTags.js';
+import { FIXTURE_STYLES, STYLE_NAMES, fixtureTokensFor } from '../../src/world/fixtureStyles.js';
 
 describe('tag atlas cells', () => {
   it('partitions the atlas into 17 non-overlapping cells', () => {
@@ -97,5 +98,65 @@ describe('drawTagCell contract', () => {
     const texts = ops.filter((entry) => entry.op === 'fillText').map((entry) => entry.args[0]);
     expect(texts).toContain('सकियो');
     expect(texts).not.toContain('रू 25');
+  });
+});
+
+describe('tagPalette', () => {
+  /** @returns {{ ops: Array<{ op: string, args: any[] }>, ctx: any }} stub context recording calls */
+  function paletteCtx() {
+    /** @type {Array<{ op: string, args: any[] }>} */
+    const ops = [];
+    const ctx = /** @type {any} */ ({});
+    for (const name of ['save', 'beginPath', 'rect', 'clip', 'fillRect', 'moveTo', 'lineTo', 'stroke', 'fillText', 'restore']) {
+      ctx[name] = (/** @type {...any} */ ...args) => {
+        ops.push({ op: name, args });
+      };
+    }
+    for (const prop of ['fillStyle', 'strokeStyle']) {
+      Object.defineProperty(ctx, prop, {
+        set(/** @type {any} */ value) {
+          ops.push({ op: prop, args: [value] });
+        },
+        get() {
+          return undefined;
+        },
+      });
+    }
+    return { ops, ctx };
+  }
+
+  const paletteRect = { x: 0, y: 0, w: 100, h: 128 };
+  const paletteSku = CATALOG.find((entry) => entry.id === 'nun-1kg');
+  if (!paletteSku) throw new Error('catalog must contain nun-1kg');
+
+  it('defaults to the traditional paper palette', () => {
+    const palette = tagPalette();
+    expect(palette.background).toBe('#f5f2ea');
+    expect(palette.ink).toBe('#1c1814');
+    expect(palette.price).toBe('#991b1b');
+    expect(palette.soldOutInk).toBe('#8a8578');
+  });
+
+  it('maps style tokens to css colors per style', () => {
+    for (const name of STYLE_NAMES) {
+      const tokens = fixtureTokensFor(name);
+      const palette = tagPalette(tokens.tag);
+      expect(palette.background).toBe(`#${tokens.tag.paper.toString(16).padStart(6, '0')}`);
+      expect(palette.price).toBe(`#${tokens.tag.price.toString(16).padStart(6, '0')}`);
+      expect(palette.soldOutBackground).toBe(palette.soldOutInk);
+      expect(palette.hairline).toContain('0.28');
+    }
+  });
+
+  it('re-skins priced and sold-out cells with a custom palette', () => {
+    const custom = tagPalette(FIXTURE_STYLES.supermart.tag);
+    const priced = paletteCtx();
+    drawTagCell(priced.ctx, paletteRect, paletteSku, 'रू 25', false, custom);
+    const fills = priced.ops.filter((entry) => entry.op === 'fillStyle').map((entry) => entry.args[0]);
+    expect(fills).toContain('#ffffff');
+    const sold = paletteCtx();
+    drawTagCell(sold.ctx, paletteRect, paletteSku, 'रू 25', true, custom);
+    const soldFills = sold.ops.filter((entry) => entry.op === 'fillStyle').map((entry) => entry.args[0]);
+    expect(soldFills).toContain(`#${FIXTURE_STYLES.supermart.tag.soldOut.toString(16).padStart(6, '0')}`);
   });
 });
