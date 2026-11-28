@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OBSTACLES } from './layout.js';
 import { makeArt, makeTexture, makeBump, drawZinc, drawZincBump, drawZincRoughness, drawAnkhiJhyal, drawPasalBoard, loadDevanagariFont } from './art.js';
+import { placedGeometry, mergedParts, addMergedMesh } from './merge.js';
 
 export const ARCHITECTURE = {
   awningDepth: 1.35,
@@ -59,71 +60,53 @@ function wallBoxes() {
   return { back, left };
 }
 
-/** @param {THREE.Object3D} parent @param {THREE.BufferGeometry} geometry @param {THREE.Material} material @returns {THREE.Mesh} */
-function addMesh(parent, geometry, material) {
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  parent.add(mesh);
-  return mesh;
-}
-
 /**
- * One straight roof/awning segment: slope runs in the (slopeAxis, y) plane,
- * extruded along the cross axis from crossStart to crossEnd.
- * @param {THREE.Material} material
+ * One straight roof/awning segment baked into geometry: slope runs in the
+ * (slopeAxis, y) plane, extruded along the cross axis from crossStart to crossEnd.
  * @param {{ s: number, y: number }} slopeStart
  * @param {{ s: number, y: number }} slopeEnd
  * @param {number} crossStart
  * @param {number} crossEnd
  * @param {'x' | 'z'} slopeAxis
  * @param {number} thickness
- * @returns {THREE.Mesh}
+ * @returns {THREE.BufferGeometry}
  */
-function slopedSegment(material, slopeStart, slopeEnd, crossStart, crossEnd, slopeAxis, thickness) {
+function slopedGeometry(slopeStart, slopeEnd, crossStart, crossEnd, slopeAxis, thickness) {
   const drop = slopeEnd.y - slopeStart.y;
   const run = slopeEnd.s - slopeStart.s;
   const length = Math.hypot(run, drop);
   const crossLength = crossEnd - crossStart;
+  const angle = Math.atan2(drop, run);
+  const rotation = /** @type {[number, number, number]} */ (slopeAxis === 'x' ? [0, 0, angle] : [-angle, 0, 0]);
+  const position = /** @type {[number, number, number]} */ (
+    slopeAxis === 'x'
+      ? [(slopeStart.s + slopeEnd.s) / 2, (slopeStart.y + slopeEnd.y) / 2, (crossStart + crossEnd) / 2]
+      : [(crossStart + crossEnd) / 2, (slopeStart.y + slopeEnd.y) / 2, (slopeStart.s + slopeEnd.s) / 2]
+  );
   const geometry =
     slopeAxis === 'x'
       ? new THREE.BoxGeometry(length, thickness, crossLength)
       : new THREE.BoxGeometry(crossLength, thickness, length);
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  const angle = Math.atan2(drop, run);
-  if (slopeAxis === 'x') {
-    mesh.rotation.z = angle;
-  } else {
-    mesh.rotation.x = -angle;
-  }
-  mesh.position.set(
-    slopeAxis === 'x' ? (slopeStart.s + slopeEnd.s) / 2 : (crossStart + crossEnd) / 2,
-    (slopeStart.y + slopeEnd.y) / 2,
-    slopeAxis === 'x' ? (crossStart + crossEnd) / 2 : (slopeStart.s + slopeEnd.s) / 2,
-  );
-  return mesh;
+  return placedGeometry(geometry, { position, rotation });
 }
 
 /**
  * Corrugated zinc panel with a mid-span sag, built from two segments.
- * @param {THREE.Scene} scene
- * @param {THREE.Material} material
  * @param {{ s: number, y: number }} slopeStart
  * @param {{ s: number, y: number }} slopeEnd
  * @param {number} crossStart
  * @param {number} crossEnd
  * @param {'x' | 'z'} slopeAxis
+ * @returns {THREE.BufferGeometry[]}
  */
-function addSagPanel(scene, material, slopeStart, slopeEnd, crossStart, crossEnd, slopeAxis) {
+function sagPanelGeometries(slopeStart, slopeEnd, crossStart, crossEnd, slopeAxis) {
   const midS = (slopeStart.s + slopeEnd.s) / 2;
   const midY = (slopeStart.y + slopeEnd.y) / 2 - ARCHITECTURE.awningSagMid;
   const mid = { s: midS, y: midY };
-  scene.add(
-    slopedSegment(material, slopeStart, mid, crossStart, crossEnd, slopeAxis, ARCHITECTURE.awningThickness),
-    slopedSegment(material, mid, slopeEnd, crossStart, crossEnd, slopeAxis, ARCHITECTURE.awningThickness),
-  );
+  return [
+    slopedGeometry(slopeStart, mid, crossStart, crossEnd, slopeAxis, ARCHITECTURE.awningThickness),
+    slopedGeometry(mid, slopeEnd, crossStart, crossEnd, slopeAxis, ARCHITECTURE.awningThickness),
+  ];
 }
 
 /**
@@ -142,24 +125,23 @@ function buildAwning(scene, zincMaterial, walls) {
   const xStart = walls.left.minX - ARCHITECTURE.awningOverhang;
   const xEnd = walls.back.maxX + ARCHITECTURE.awningOverhang;
 
-  addSagPanel(
-    scene,
-    zincMaterial,
-    { s: eastInnerX, y: ARCHITECTURE.awningAttachY },
-    { s: eastOuterX, y: ARCHITECTURE.awningOuterY },
-    zStart,
-    zEnd,
-    'x',
-  );
-  addSagPanel(
-    scene,
-    zincMaterial,
-    { s: southInnerZ, y: ARCHITECTURE.awningAttachY },
-    { s: southOuterZ, y: ARCHITECTURE.awningOuterY },
-    xStart,
-    xEnd,
-    'z',
-  );
+  const parts = [
+    ...sagPanelGeometries(
+      { s: eastInnerX, y: ARCHITECTURE.awningAttachY },
+      { s: eastOuterX, y: ARCHITECTURE.awningOuterY },
+      zStart,
+      zEnd,
+      'x',
+    ),
+    ...sagPanelGeometries(
+      { s: southInnerZ, y: ARCHITECTURE.awningAttachY },
+      { s: southOuterZ, y: ARCHITECTURE.awningOuterY },
+      xStart,
+      xEnd,
+      'z',
+    ),
+  ];
+  addMergedMesh(scene, mergedParts(parts), zincMaterial, { name: 'awning' });
 }
 
 /**
@@ -168,21 +150,25 @@ function buildAwning(scene, zincMaterial, walls) {
  * @param {{ back: Box, left: Box }} walls
  */
 function buildThaam(scene, timberMaterial, walls) {
-  const postGeometry = new THREE.BoxGeometry(ARCHITECTURE.thaamSize, ARCHITECTURE.awningAttachY, ARCHITECTURE.thaamSize);
-  const capGeometry = new THREE.BoxGeometry(ARCHITECTURE.thaamSize * 1.5, 0.14, ARCHITECTURE.thaamSize * 1.5);
-  const baseGeometry = new THREE.BoxGeometry(ARCHITECTURE.thaamSize * 1.7, 0.16, ARCHITECTURE.thaamSize * 1.7);
   const posts = [
     { x: walls.back.maxX - ARCHITECTURE.thaamInset, z: walls.back.maxZ - 0.15 },
     { x: walls.left.minX + ARCHITECTURE.thaamInset, z: walls.left.maxZ - 0.15 },
   ];
+  const parts = [];
   for (const post of posts) {
-    const column = addMesh(scene, postGeometry, timberMaterial);
-    column.position.set(post.x, ARCHITECTURE.awningAttachY / 2, post.z);
-    const cap = addMesh(scene, capGeometry, timberMaterial);
-    cap.position.set(post.x, ARCHITECTURE.awningAttachY - 0.07, post.z);
-    const base = addMesh(scene, baseGeometry, timberMaterial);
-    base.position.set(post.x, 0.08, post.z);
+    parts.push(
+      placedGeometry(new THREE.BoxGeometry(ARCHITECTURE.thaamSize, ARCHITECTURE.awningAttachY, ARCHITECTURE.thaamSize), {
+        position: [post.x, ARCHITECTURE.awningAttachY / 2, post.z],
+      }),
+      placedGeometry(new THREE.BoxGeometry(ARCHITECTURE.thaamSize * 1.5, 0.14, ARCHITECTURE.thaamSize * 1.5), {
+        position: [post.x, ARCHITECTURE.awningAttachY - 0.07, post.z],
+      }),
+      placedGeometry(new THREE.BoxGeometry(ARCHITECTURE.thaamSize * 1.7, 0.16, ARCHITECTURE.thaamSize * 1.7), {
+        position: [post.x, 0.08, post.z],
+      }),
+    );
   }
+  addMergedMesh(scene, mergedParts(parts), timberMaterial, { name: 'thaam', castShadow: false });
 }
 
 /**
@@ -192,56 +178,53 @@ function buildThaam(scene, timberMaterial, walls) {
  */
 function buildShutterHousings(scene, shutterMaterial, walls) {
   const openingLength = walls.back.maxX - walls.back.minZ;
-  const housingGeometry = new THREE.CylinderGeometry(
+  const housing = () => new THREE.CylinderGeometry(
     ARCHITECTURE.shutterRadius,
     ARCHITECTURE.shutterRadius,
     openingLength + 0.4,
     12,
   );
-  const eastHousing = addMesh(scene, housingGeometry, shutterMaterial);
-  eastHousing.rotation.x = Math.PI / 2;
-  eastHousing.position.set(
-    walls.back.maxX - 0.12,
-    ARCHITECTURE.shutterY,
-    (walls.back.minZ + walls.left.maxZ) / 2,
-  );
-  const southHousing = addMesh(scene, housingGeometry, shutterMaterial);
-  southHousing.rotation.z = Math.PI / 2;
-  southHousing.position.set(
-    (walls.left.minX + walls.back.maxX) / 2,
-    ARCHITECTURE.shutterY,
-    walls.left.maxZ - 0.12,
-  );
+  const parts = [
+    placedGeometry(housing(), {
+      position: [walls.back.maxX - 0.12, ARCHITECTURE.shutterY, (walls.back.minZ + walls.left.maxZ) / 2],
+      rotation: [Math.PI / 2, 0, 0],
+    }),
+    placedGeometry(housing(), {
+      position: [(walls.left.minX + walls.back.maxX) / 2, ARCHITECTURE.shutterY, walls.left.maxZ - 0.12],
+      rotation: [0, 0, Math.PI / 2],
+    }),
+  ];
+  addMergedMesh(scene, mergedParts(parts), shutterMaterial, { name: 'shutter-housings', castShadow: false });
 }
 
 /**
- * @param {THREE.Scene} scene
- * @param {THREE.MeshStandardMaterial} stoneMaterial
  * @param {{ back: Box, left: Box }} walls
+ * @returns {THREE.BufferGeometry[]}
  */
-function buildPedi(scene, stoneMaterial, walls) {
+function pediGeometries(walls) {
   const eastLength = walls.left.maxZ + ARCHITECTURE.pediDepth - walls.back.minZ;
-  const eastPedi = addMesh(
-    scene,
+  const eastPedi = placedGeometry(
     new THREE.BoxGeometry(ARCHITECTURE.pediDepth + 0.02, ARCHITECTURE.pediHeight, eastLength),
-    stoneMaterial,
-  );
-  eastPedi.position.set(
-    walls.back.maxX + ARCHITECTURE.pediDepth / 2,
-    ARCHITECTURE.pediHeight / 2,
-    (walls.back.minZ + walls.left.maxZ + ARCHITECTURE.pediDepth) / 2,
+    {
+      position: [
+        walls.back.maxX + ARCHITECTURE.pediDepth / 2,
+        ARCHITECTURE.pediHeight / 2,
+        (walls.back.minZ + walls.left.maxZ + ARCHITECTURE.pediDepth) / 2,
+      ],
+    },
   );
   const southLength = walls.back.maxX + ARCHITECTURE.pediDepth - walls.left.minX;
-  const southPedi = addMesh(
-    scene,
+  const southPedi = placedGeometry(
     new THREE.BoxGeometry(southLength, ARCHITECTURE.pediHeight, ARCHITECTURE.pediDepth),
-    stoneMaterial,
+    {
+      position: [
+        (walls.left.minX + walls.back.maxX + ARCHITECTURE.pediDepth) / 2,
+        ARCHITECTURE.pediHeight / 2,
+        walls.left.maxZ + ARCHITECTURE.pediDepth / 2,
+      ],
+    },
   );
-  southPedi.position.set(
-    (walls.left.minX + walls.back.maxX + ARCHITECTURE.pediDepth) / 2,
-    ARCHITECTURE.pediHeight / 2,
-    walls.left.maxZ + ARCHITECTURE.pediDepth / 2,
-  );
+  return [eastPedi, southPedi];
 }
 
 /**
@@ -250,18 +233,22 @@ function buildPedi(scene, stoneMaterial, walls) {
  * @param {{ back: Box, left: Box }} walls
  */
 function buildAnkhiJhyal(scene, windowMaterial, walls) {
-  const geometry = new THREE.PlaneGeometry(ARCHITECTURE.windowWidth, ARCHITECTURE.windowHeight);
   const spots = [
     { x: walls.back.minX + 1.9, z: walls.back.minZ - 0.011, rotationY: Math.PI },
     { x: walls.back.minX + 4.6, z: walls.back.minZ - 0.011, rotationY: Math.PI },
     { x: walls.left.minX - 0.011, z: walls.left.minZ + 3.2, rotationY: -Math.PI / 2 },
   ];
-  for (const spot of spots) {
-    const window = new THREE.Mesh(geometry, windowMaterial);
-    window.position.set(spot.x, ARCHITECTURE.windowY, spot.z);
-    window.rotation.y = spot.rotationY;
-    scene.add(window);
-  }
+  const parts = spots.map((spot) =>
+    placedGeometry(new THREE.PlaneGeometry(ARCHITECTURE.windowWidth, ARCHITECTURE.windowHeight), {
+      position: [spot.x, ARCHITECTURE.windowY, spot.z],
+      rotation: [0, spot.rotationY, 0],
+    }),
+  );
+  addMergedMesh(scene, mergedParts(parts), windowMaterial, {
+    name: 'ankhi-jhyal',
+    castShadow: false,
+    receiveShadow: false,
+  });
 }
 
 /**
@@ -273,14 +260,20 @@ function buildPasalBoard(scene, walls, renderer) {
   const boardCanvas = makeArt(1024, 340, drawPasalBoard);
   const boardTexture = makeTexture(boardCanvas, renderer);
   const boardMaterial = new THREE.MeshStandardMaterial({ map: boardTexture, roughness: 0.7 });
-  const geometry = new THREE.PlaneGeometry(ARCHITECTURE.boardWidth, ARCHITECTURE.boardHeight);
-  const south = new THREE.Mesh(geometry, boardMaterial);
-  south.position.set((walls.left.minX + walls.back.maxX) / 2 - 0.4, ARCHITECTURE.boardY, walls.left.maxZ + 0.011);
-  scene.add(south);
-  const east = new THREE.Mesh(geometry, boardMaterial);
-  east.position.set(walls.back.maxX + 0.011, ARCHITECTURE.boardY, (walls.back.minZ + walls.left.maxZ) / 2 + 0.6);
-  east.rotation.y = Math.PI / 2;
-  scene.add(east);
+  addMergedMesh(
+    scene,
+    mergedParts([
+      placedGeometry(new THREE.PlaneGeometry(ARCHITECTURE.boardWidth, ARCHITECTURE.boardHeight), {
+        position: [(walls.left.minX + walls.back.maxX) / 2 - 0.4, ARCHITECTURE.boardY, walls.left.maxZ + 0.011],
+      }),
+      placedGeometry(new THREE.PlaneGeometry(ARCHITECTURE.boardWidth, ARCHITECTURE.boardHeight), {
+        position: [walls.back.maxX + 0.011, ARCHITECTURE.boardY, (walls.back.minZ + walls.left.maxZ) / 2 + 0.6],
+        rotation: [0, Math.PI / 2, 0],
+      }),
+    ]),
+    boardMaterial,
+    { name: 'pasal-board', castShadow: false, receiveShadow: true },
+  );
 
   loadDevanagariFont().then((loaded) => {
     if (!loaded) return;
@@ -303,30 +296,32 @@ function buildRoof(scene, zincMaterial, walls) {
   const slope = Math.atan2(drop, span);
   const panelLength = Math.hypot(span, drop);
   const centerX = (walls.back.minX + walls.back.maxX) / 2;
-  const northPanel = addMesh(scene, new THREE.BoxGeometry(length, 0.08, panelLength), zincMaterial);
-  northPanel.position.set(centerX, (ARCHITECTURE.ridgeY + ARCHITECTURE.eaveY) / 2, ridgeZ - span / 2);
-  northPanel.rotation.x = -slope;
-  const southPanel = addMesh(scene, new THREE.BoxGeometry(length, 0.08, panelLength), zincMaterial);
-  southPanel.position.set(centerX, (ARCHITECTURE.ridgeY + ARCHITECTURE.eaveY) / 2, ridgeZ + span / 2);
-  southPanel.rotation.x = slope;
-  const ridgeCap = addMesh(scene, new THREE.BoxGeometry(length + 0.2, 0.1, 0.34), zincMaterial);
-  ridgeCap.position.set(centerX, ARCHITECTURE.ridgeY + 0.03, ridgeZ);
   const fasciaLength = walls.back.maxX - walls.back.minX + ARCHITECTURE.roofOverhang * 2;
+  const parts = [
+    placedGeometry(new THREE.BoxGeometry(length, 0.08, panelLength), {
+      position: [centerX, (ARCHITECTURE.ridgeY + ARCHITECTURE.eaveY) / 2, ridgeZ - span / 2],
+      rotation: [-slope, 0, 0],
+    }),
+    placedGeometry(new THREE.BoxGeometry(length, 0.08, panelLength), {
+      position: [centerX, (ARCHITECTURE.ridgeY + ARCHITECTURE.eaveY) / 2, ridgeZ + span / 2],
+      rotation: [slope, 0, 0],
+    }),
+    placedGeometry(new THREE.BoxGeometry(length + 0.2, 0.1, 0.34), {
+      position: [centerX, ARCHITECTURE.ridgeY + 0.03, ridgeZ],
+    }),
+  ];
   for (const side of [-1, 1]) {
-    const fascia = addMesh(
-      scene,
-      new THREE.BoxGeometry(fasciaLength, MOLDINGS.fasciaHeight, MOLDINGS.fasciaThickness),
-      zincMaterial,
+    parts.push(
+      placedGeometry(new THREE.BoxGeometry(fasciaLength, MOLDINGS.fasciaHeight, MOLDINGS.fasciaThickness), {
+        position: [centerX, ARCHITECTURE.eaveY, ridgeZ + side * span],
+      }),
     );
-    fascia.position.set(centerX, ARCHITECTURE.eaveY, ridgeZ + side * span);
   }
+  addMergedMesh(scene, mergedParts(parts), zincMaterial, { name: 'roof' });
 }
 
-/**
- * Stone pillar dressing: plinth + capital read as molded stone instead of a bare box.
- * @param {THREE.Scene} scene @param {THREE.Material} stoneMaterial
- */
-function buildPillarDetail(scene, stoneMaterial) {
+/** @returns {THREE.BufferGeometry[]} stone pillar dressing: plinth + capital as molded stone */
+function pillarGeometries() {
   const pillar = OBSTACLES.find((box) => box.name === 'Corner Pillar');
   if (!pillar) throw new Error('layout.js must define the corner pillar');
   const width = pillar.maxX - pillar.minX;
@@ -334,42 +329,37 @@ function buildPillarDetail(scene, stoneMaterial) {
   const height = 1.0;
   const cx = (pillar.minX + pillar.maxX) / 2;
   const cz = (pillar.minZ + pillar.maxZ) / 2;
-  const plinth = addMesh(
-    scene,
-    new THREE.BoxGeometry(width + MOLDINGS.plinthGrow, MOLDINGS.plinthHeight, depth + MOLDINGS.plinthGrow),
-    stoneMaterial,
-  );
-  plinth.position.set(cx, MOLDINGS.plinthHeight / 2, cz);
-  const capital = addMesh(
-    scene,
-    new THREE.BoxGeometry(width + MOLDINGS.capitalGrow, MOLDINGS.capitalHeight, depth + MOLDINGS.capitalGrow),
-    stoneMaterial,
-  );
-  capital.position.set(cx, height - MOLDINGS.capitalHeight / 2, cz);
+  return [
+    placedGeometry(
+      new THREE.BoxGeometry(width + MOLDINGS.plinthGrow, MOLDINGS.plinthHeight, depth + MOLDINGS.plinthGrow),
+      { position: [cx, MOLDINGS.plinthHeight / 2, cz] },
+    ),
+    placedGeometry(
+      new THREE.BoxGeometry(width + MOLDINGS.capitalGrow, MOLDINGS.capitalHeight, depth + MOLDINGS.capitalGrow),
+      { position: [cx, height - MOLDINGS.capitalHeight / 2, cz] },
+    ),
+  ];
 }
 
-/**
- * Timber counter slab with a front overhang, resting on the OBSTACLES counter box.
- * @param {THREE.Scene} scene @param {THREE.Material} slabMaterial
- */
-function buildCounterTop(scene, slabMaterial) {
+/** @returns {THREE.BufferGeometry} timber counter slab with a front overhang, resting on the OBSTACLES counter box */
+function counterTopGeometry() {
   const counter = OBSTACLES.find((box) => box.name === 'Wooden Counter');
   if (!counter) throw new Error('layout.js must define the wooden counter');
   const width = counter.maxX - counter.minX;
   const depth = counter.maxZ - counter.minZ;
-  const slab = addMesh(
-    scene,
+  return placedGeometry(
     new THREE.BoxGeometry(
       width + MOLDINGS.counterSlabGrowX,
       MOLDINGS.counterSlabHeight,
       depth + MOLDINGS.counterSlabGrowZ,
     ),
-    slabMaterial,
-  );
-  slab.position.set(
-    (counter.minX + counter.maxX) / 2,
-    1.0 + MOLDINGS.counterSlabHeight / 2,
-    (counter.minZ + counter.maxZ) / 2,
+    {
+      position: [
+        (counter.minX + counter.maxX) / 2,
+        1.0 + MOLDINGS.counterSlabHeight / 2,
+        (counter.minZ + counter.maxZ) / 2,
+      ],
+    },
   );
 }
 
@@ -402,9 +392,10 @@ export function buildArchitecture(scene, renderer) {
   buildAwning(scene, zincMaterial, walls);
   buildThaam(scene, timberMaterial, walls);
   buildShutterHousings(scene, shutterMaterial, walls);
-  buildPedi(scene, stoneMaterial, walls);
-  buildPillarDetail(scene, stoneMaterial);
-  buildCounterTop(scene, slabMaterial);
+  addMergedMesh(scene, mergedParts([...pediGeometries(walls), ...pillarGeometries()]), stoneMaterial, {
+    name: 'pedi-pillar-stone',
+  });
+  addMergedMesh(scene, counterTopGeometry(), slabMaterial, { name: 'counter-top', castShadow: false });
   buildAnkhiJhyal(scene, windowMaterial, walls);
   buildPasalBoard(scene, walls, renderer);
   buildRoof(scene, zincMaterial, walls);

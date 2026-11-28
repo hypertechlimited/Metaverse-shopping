@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { makeArt, makeTexture, drawFlame, drawNepaliFlag, drawWindhorseFlag } from './art.js';
+import { mergedParts, placedGeometry } from './merge.js';
 
 export const CULTURE = {
   lungtaCount: 12,
@@ -87,6 +88,7 @@ export function toranSagPoints(a, b, count, sag) {
 }
 
 /** @typedef {{ mesh: THREE.Mesh, normals: [number, number], phase: number, base: Float32Array }} ClothFlag */
+/** @typedef {{ mesh: THREE.Mesh }} MergedCloth */
 
 /**
  * @param {THREE.Vector3} a @param {THREE.Vector3} b @returns {{ dirX: number, dirZ: number, normX: number, normZ: number }}
@@ -123,6 +125,60 @@ function animateCloth(mesh, base, normal, phase, amplitude, t) {
   mesh.geometry.computeVertexNormals();
 }
 
+/**
+ * Bakes per-vertex cloth state (across/hang/phase/normal) into a flag geometry so
+ * many flags can merge into one draw call per cloth material and still sway
+ * individually. Must run before the geometry is transformed.
+ * @param {THREE.PlaneGeometry} geometry @param {number} phase @param {{ normX: number, normZ: number }} basis
+ * @returns {THREE.PlaneGeometry}
+ */
+function clothVertexData(geometry, phase, basis) {
+  const positions = geometry.getAttribute('position');
+  const count = positions.count;
+  const across = new Float32Array(count);
+  const hang = new Float32Array(count);
+  const phases = new Float32Array(count);
+  const normals = new Float32Array(count * 2);
+  for (let i = 0; i < count; i++) {
+    across[i] = positions.getX(i) / CULTURE.lungtaWidth + 0.5;
+    hang[i] = (CULTURE.lungtaHeight / 2 - positions.getY(i)) / CULTURE.lungtaHeight;
+    phases[i] = phase;
+    normals[i * 2] = basis.normX;
+    normals[i * 2 + 1] = basis.normZ;
+  }
+  geometry.setAttribute('aAcross', new THREE.BufferAttribute(across, 1));
+  geometry.setAttribute('aHang', new THREE.BufferAttribute(hang, 1));
+  geometry.setAttribute('aPhase', new THREE.BufferAttribute(phases, 1));
+  geometry.setAttribute('aNormal', new THREE.BufferAttribute(normals, 2));
+  return geometry;
+}
+
+/**
+ * CPU cloth animation over a merged flag geometry: per-vertex sway from the
+ * baked attributes, no per-frame allocation.
+ * @param {MergedCloth} cloth @param {number} t @param {number} amplitude
+ */
+function animateMergedCloth(cloth, t, amplitude) {
+  const geometry = cloth.mesh.geometry;
+  const positions = /** @type {THREE.BufferAttribute} */ (geometry.getAttribute('position'));
+  const base = /** @type {THREE.BufferAttribute} */ (geometry.getAttribute('aBase'));
+  const phases = /** @type {THREE.BufferAttribute} */ (geometry.getAttribute('aPhase'));
+  const across = /** @type {THREE.BufferAttribute} */ (geometry.getAttribute('aAcross'));
+  const hang = /** @type {THREE.BufferAttribute} */ (geometry.getAttribute('aHang'));
+  const normals = /** @type {THREE.BufferAttribute} */ (geometry.getAttribute('aNormal'));
+  for (let i = 0; i < positions.count; i++) {
+    const offset = flagSway(t, phases.getX(i), across.getX(i), hang.getX(i), amplitude);
+    positions.setXYZ(
+      i,
+      base.getX(i) + normals.getX(i) * offset,
+      base.getY(i),
+      base.getZ(i) + normals.getY(i) * offset,
+    );
+  }
+  positions.needsUpdate = true;
+  geometry.computeVertexNormals();
+}
+
 /** @param {THREE.WebGLRenderer} renderer @returns {THREE.Texture} */
 function flameTexture(renderer) {
   return makeTexture(makeArt(64, 64, drawFlame), renderer);
@@ -142,7 +198,6 @@ function buildDiyo(scene, texture) {
     new THREE.MeshStandardMaterial({ color: CULTURE_COLORS.clay, roughness: 0.9 }),
   );
   lamp.position.set(CULTURE.diyoPosition[0], CULTURE.diyoPosition[1] + 0.045, CULTURE.diyoPosition[2]);
-  lamp.castShadow = true;
   scene.add(lamp);
 
   const oil = new THREE.Mesh(
@@ -164,19 +219,15 @@ function buildDiyo(scene, texture) {
 }
 
 /**
- * @param {THREE.Scene} scene
  * @param {THREE.Vector3} a
  * @param {THREE.Vector3} b
- * @param {THREE.MeshStandardMaterial} ropeMaterial
  * @param {THREE.InstancedMesh} flowers
  * @param {number} flowerOffset
+ * @returns {THREE.BufferGeometry} toran rope strand geometry
  */
-function buildToran(scene, a, b, ropeMaterial, flowers, flowerOffset) {
+function buildToran(a, b, flowers, flowerOffset) {
   const points = toranSagPoints([a.x, a.y, a.z], [b.x, b.y, b.z], CULTURE.toranCount, CULTURE.toranSag);
   const curve = new THREE.CatmullRomCurve3(points.map(([x, y, z]) => new THREE.Vector3(x, y, z)));
-  const rope = new THREE.Mesh(new THREE.TubeGeometry(curve, 24, 0.012, 5), ropeMaterial);
-  rope.castShadow = true;
-  scene.add(rope);
 
   const matrix = new THREE.Matrix4();
   let instance = flowerOffset;
@@ -201,6 +252,12 @@ function buildToran(scene, a, b, ropeMaterial, flowers, flowerOffset) {
       instance++;
     }
   }
+  return new THREE.TubeGeometry(curve, 24, 0.012, 5);
+}
+
+/** @param {{ a: [number, number, number], b: [number, number, number] }} rope @returns {[THREE.Vector3, THREE.Vector3]} */
+function ropeEndpoints(rope) {
+  return [new THREE.Vector3(...rope.a), new THREE.Vector3(...rope.b)];
 }
 
 /**
@@ -213,7 +270,6 @@ function buildRooftopFlag(scene, texture) {
     new THREE.MeshStandardMaterial({ color: CULTURE_COLORS.clayDark, roughness: 0.85 }),
   );
   pole.position.set(-1.7, CULTURE.flagPoleHeight / 2 + 3.95, -1.7);
-  pole.castShadow = true;
   scene.add(pole);
 
   const geometry = new THREE.PlaneGeometry(CULTURE.flagWidth, CULTURE.flagHeight, 6, 2);
@@ -237,36 +293,44 @@ function buildRooftopFlag(scene, texture) {
  * @param {{ a: [number, number, number], b: [number, number, number] }} rope
  * @param {number} count
  * @param {THREE.MeshStandardMaterial[]} materials
- * @param {THREE.LineBasicMaterial} lineMaterial
  * @param {ClothFlag[]} flags
  * @param {number} phaseSeed
  */
-function buildFlagLine(scene, rope, count, materials, lineMaterial, flags, phaseSeed) {
+/**
+ * @param {{ a: [number, number, number], b: [number, number, number] }} rope
+ * @param {number} count
+ * @param {THREE.MeshStandardMaterial[]} materials
+ * @param {Map<number, THREE.BufferGeometry[]>} partsByMaterial
+ * @param {number} phaseSeed
+ */
+function collectFlagLine(rope, count, materials, partsByMaterial, phaseSeed) {
   const ropeA = new THREE.Vector3(...rope.a);
   const ropeB = new THREE.Vector3(...rope.b);
   const ropeDir = ropeB.clone().sub(ropeA);
   const ropeLength = ropeDir.length();
   ropeDir.normalize();
   const basis = ropeBasis(ropeA, ropeB);
-
-  const ropeLine = new THREE.Line(
-    new THREE.BufferGeometry().setFromPoints([ropeA, ropeB]),
-    lineMaterial,
-  );
-  scene.add(ropeLine);
+  const rotationY = Math.atan2(-basis.dirZ, basis.dirX);
 
   for (let i = 0; i < count; i++) {
     const u = count === 1 ? 0 : i / (count - 1);
-    const mesh = new THREE.Mesh(
+    const materialIndex = i % materials.length;
+    const geometry = clothVertexData(
       new THREE.PlaneGeometry(CULTURE.lungtaWidth, CULTURE.lungtaHeight, 4, 2),
-      materials[i % materials.length],
+      (phaseSeed + i * 2.39996) % (Math.PI * 2),
+      basis,
     );
-    mesh.position.copy(ropeA).addScaledVector(ropeDir, u * ropeLength);
-    mesh.position.y -= CULTURE.lungtaHeight / 2 + 0.02;
-    mesh.rotation.y = Math.atan2(-basis.dirZ, basis.dirX);
-    scene.add(mesh);
-    const base = new Float32Array(mesh.geometry.getAttribute('position').array);
-    flags.push({ mesh, base, normals: [basis.normX, basis.normZ], phase: (phaseSeed + i * 2.39996) % (Math.PI * 2) });
+    placedGeometry(geometry, {
+      position: [
+        ropeA.x + ropeDir.x * u * ropeLength,
+        ropeA.y - CULTURE.lungtaHeight / 2 - 0.02,
+        ropeA.z + ropeDir.z * u * ropeLength,
+      ],
+      rotation: [0, rotationY, 0],
+    });
+    const bucket = partsByMaterial.get(materialIndex);
+    if (!bucket) throw new Error('partsByMaterial is missing a cloth material slot');
+    bucket.push(geometry);
   }
 }
 
@@ -280,12 +344,21 @@ export function buildCulture(scene, renderer, options = {}) {
     side: THREE.DoubleSide,
     roughness: 0.95,
   }));
-  const lineMaterial = new THREE.LineBasicMaterial({ color: CULTURE_COLORS.rope });
-
-  /** @type {ClothFlag[]} */
-  const flags = [];
-  buildFlagLine(scene, CULTURE.lungtaRope, CULTURE.lungtaCount, printMaterials, lineMaterial, flags, 0);
-  buildFlagLine(scene, CULTURE.secondLungtaRope, CULTURE.secondLungtaCount, printMaterials, lineMaterial, flags, Math.PI);
+  /** @type {Map<number, THREE.BufferGeometry[]>} */
+  const partsByMaterial = new Map(printMaterials.map((_, index) => [index, []]));
+  collectFlagLine(CULTURE.lungtaRope, CULTURE.lungtaCount, printMaterials, partsByMaterial, 0);
+  collectFlagLine(CULTURE.secondLungtaRope, CULTURE.secondLungtaCount, printMaterials, partsByMaterial, Math.PI);
+  /** @type {MergedCloth[]} */
+  const cloths = [];
+  for (const [index, parts] of partsByMaterial) {
+    const geometry = mergedParts(parts);
+    const positions = /** @type {THREE.BufferAttribute} */ (geometry.getAttribute('position'));
+    geometry.setAttribute('aBase', positions.clone());
+    const mesh = new THREE.Mesh(geometry, printMaterials[index]);
+    mesh.name = `lungta-${index}`;
+    scene.add(mesh);
+    cloths.push({ mesh });
+  }
 
   const instancesPerToran = CULTURE.toranCount + TASSEL_POSITIONS.length * TASSEL_BEADS;
   const ropeMaterial = new THREE.MeshStandardMaterial({ color: CULTURE_COLORS.rope, roughness: 0.9 });
@@ -294,24 +367,32 @@ export function buildCulture(scene, renderer, options = {}) {
     new THREE.MeshStandardMaterial({ roughness: 0.75 }),
     instancesPerToran * 2,
   );
-  buildToran(
-    scene,
-    new THREE.Vector3(-4.55, CULTURE.toranY, 1.66),
-    new THREE.Vector3(1.62, CULTURE.toranY, 1.66),
-    ropeMaterial,
-    flowers,
-    0,
-  );
-  buildToran(
-    scene,
-    new THREE.Vector3(1.66, CULTURE.toranY, -4.55),
-    new THREE.Vector3(1.66, CULTURE.toranY, 1.62),
-    ropeMaterial,
-    flowers,
-    instancesPerToran,
-  );
+  const ropeParts = [
+    buildToran(
+      new THREE.Vector3(-4.55, CULTURE.toranY, 1.66),
+      new THREE.Vector3(1.62, CULTURE.toranY, 1.66),
+      flowers,
+      0,
+    ),
+    buildToran(
+      new THREE.Vector3(1.66, CULTURE.toranY, -4.55),
+      new THREE.Vector3(1.66, CULTURE.toranY, 1.62),
+      flowers,
+      instancesPerToran,
+    ),
+  ];
   flowers.instanceMatrix.needsUpdate = true;
   scene.add(flowers);
+  scene.add(new THREE.Mesh(mergedParts(ropeParts), ropeMaterial));
+
+  const ropeLine = new THREE.LineSegments(
+    new THREE.BufferGeometry().setFromPoints([
+      ...ropeEndpoints(CULTURE.lungtaRope),
+      ...ropeEndpoints(CULTURE.secondLungtaRope),
+    ]),
+    new THREE.LineBasicMaterial({ color: CULTURE_COLORS.rope }),
+  );
+  scene.add(ropeLine);
 
   const diyo = buildDiyo(scene, flameTexture(renderer));
   const rooftopFlag = buildRooftopFlag(scene, makeTexture(makeArt(160, 110, drawNepaliFlag), renderer));
@@ -327,8 +408,8 @@ export function buildCulture(scene, renderer, options = {}) {
       CULTURE.diyoFlameScale * 1.2 * (1 + 0.12 * Math.sin(t * 13.7 + 1.1)),
       1,
     );
-    for (const flag of flags) {
-      animateCloth(flag.mesh, flag.base, flag.normals, flag.phase, CULTURE.lungtaSwayAmplitude * scale, t);
+    for (const cloth of cloths) {
+      animateMergedCloth(cloth, t, CULTURE.lungtaSwayAmplitude * scale);
     }
     animateCloth(
       rooftopFlag.mesh,

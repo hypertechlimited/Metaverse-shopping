@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { makeArt, makeTexture, drawShaft } from './art.js';
+import { placedGeometry, mergedParts } from './merge.js';
 
 export const ATMOSPHERE = {
   dustCountPerShaft: 150,
@@ -46,13 +47,13 @@ export function buildAtmosphere(scene, renderer, options = {}) {
     depthWrite: false,
     side: THREE.DoubleSide,
   });
-  const shaftGeometry = new THREE.PlaneGeometry(ATMOSPHERE.shaftWidth, ATMOSPHERE.shaftHeight);
-  for (const shaft of Object.values(SHAFT_POSITIONS)) {
-    const plane = new THREE.Mesh(shaftGeometry, shaftMaterial);
-    plane.position.set(shaft.position[0], shaft.position[1], shaft.position[2]);
-    plane.rotation.y = shaft.rotationY;
-    scene.add(plane);
-  }
+  const shaftParts = Object.values(SHAFT_POSITIONS).map((shaft) =>
+    placedGeometry(new THREE.PlaneGeometry(ATMOSPHERE.shaftWidth, ATMOSPHERE.shaftHeight), {
+      position: [shaft.position[0], shaft.position[1], shaft.position[2]],
+      rotation: [0, shaft.rotationY, 0],
+    }),
+  );
+  scene.add(new THREE.Mesh(mergedParts(shaftParts), shaftMaterial));
 
   const tungsten = new THREE.PointLight(
     ATMOSPHERE.tungstenColor,

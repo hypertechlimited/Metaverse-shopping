@@ -8,6 +8,7 @@ import { createCameraRig } from './engine/cameraRig.js';
 import { createPlayer, PLAYER } from './engine/player.js';
 import { buildNavGrid, findPath } from './engine/nav.js';
 import { createPerfGovernor } from './engine/perfGovernor.js';
+import { createDebugProbe } from './engine/debugProbe.js';
 import { createPeerFeed } from './engine/presenceFeed.js';
 import { addSample, trimBuffer, sampleAt } from './engine/avatar.js';
 import { buildPeer } from './world/peer.js';
@@ -28,11 +29,13 @@ import { buildProps } from './world/props.js';
 import { buildProducts } from './world/products.js';
 import { buildNpcs, npcName } from './world/npc.js';
 import { buildFacades } from './world/facades.js';
+import { placedGeometry, mergedParts, addMergedMesh } from './world/merge.js';
 import { drawThumb } from './world/thumbs.js';
 import { createDpad, createKeyboardControl, dragOrbit, clampOrbitRadius, DPAD, directionVector, MOVE_LABELS } from './ui/dpad.js';
 import { createLandingOverlay } from './ui/landing.js';
 import { createToast } from './ui/toast.js';
 import { createHud } from './ui/hud.js';
+import { createDebugHud } from './ui/debugHud.js';
 import { createCatalogDrawer } from './ui/catalogDrawer.js';
 import { createInspector } from './ui/inspector.js';
 import { createHoverTip, tipLines } from './ui/hoverTip.js';
@@ -83,6 +86,12 @@ function buildShell(scene, renderer) {
   const woodMaterial = new THREE.MeshStandardMaterial({ color: 0x5b4028, roughness: 0.85 });
   const stoneMaterial = new THREE.MeshStandardMaterial({ color: 0x8a8578, roughness: 0.9 });
 
+  /** @type {THREE.BufferGeometry[]} */
+  const brickParts = [];
+  /** @type {THREE.BufferGeometry[]} */
+  const woodParts = [];
+  /** @type {THREE.BufferGeometry[]} */
+  const stoneParts = [];
   for (const box of OBSTACLES) {
     const width = box.maxX - box.minX;
     const depth = box.maxZ - box.minZ;
@@ -90,15 +99,16 @@ function buildShell(scene, renderer) {
     const height = isWall ? SHELL.wallHeight : SHELL.propHeight;
     const centerX = (box.minX + box.maxX) / 2;
     const centerZ = (box.minZ + box.maxZ) / 2;
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(width, height, depth),
-      isWall ? brickMaterial : box.name === 'Corner Pillar' ? stoneMaterial : woodMaterial,
+    const parts = isWall ? brickParts : box.name === 'Corner Pillar' ? stoneParts : woodParts;
+    parts.push(
+      placedGeometry(new THREE.BoxGeometry(width, height, depth), {
+        position: [centerX, height / 2, centerZ],
+      }),
     );
-    mesh.position.set(centerX, height / 2, centerZ);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    scene.add(mesh);
   }
+  addMergedMesh(scene, mergedParts(brickParts), brickMaterial, { name: 'shell-brick' });
+  addMergedMesh(scene, mergedParts(woodParts), woodMaterial, { name: 'shell-wood' });
+  addMergedMesh(scene, mergedParts(stoneParts), stoneMaterial, { name: 'shell-stone' });
 
   cobbleMap.repeat.set(8, 8);
 }
@@ -152,6 +162,7 @@ function boot() {
   const scene = new THREE.Scene();
 
   const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+  const probe = createDebugProbe({ renderer, scene, camera, search: window.location.search });
 
   const theme = buildTheme(scene, renderer);
   buildShell(scene, renderer);
@@ -313,6 +324,7 @@ function boot() {
     const preset = CAMERA_PRESETS.find((entry) => entry.name === name);
     if (!preset) return;
     if (store.get().mode !== 'explore') return;
+    theme.setMood(preset.mood ?? 'day');
     store.set({ mode: 'transition' });
     const origin = /** @type {[number, number, number]} */ ([camera.position.x, camera.position.y, camera.position.z]);
     rig.beginTransition(
@@ -487,6 +499,7 @@ function boot() {
       ? CAMERA_PRESETS.find((entry) => entry.name === preset)
       : undefined;
     const target = presetEntry?.position ?? ENTER_POSITION;
+    theme.setMood(presetEntry?.mood ?? 'day');
     store.set({ mode: 'transition', visitorName: name });
     dpad.dispose();
     keyboard.dispose();
@@ -583,6 +596,12 @@ function boot() {
 
   const hudHost = document.getElementById('hud');
   const hud = createHud(/** @type {HTMLElement} */ (hudHost), { onCartClick: () => drawer.open() });
+  const debugHud = probe
+    ? createDebugHud(/** @type {HTMLElement} */ (hudHost), {
+        initialDpr: basePixelRatio,
+        getStats: () => /** @type {NonNullable<typeof probe>} */ (probe).stats(),
+      })
+    : null;
   const drawer = createCatalogDrawer(body, {
     getLines: () => store.get().cartLines,
     stockOf: (id) => store.get().stockMap[id] ?? 0,
@@ -618,6 +637,8 @@ function boot() {
     peer.dispose();
     scene.remove(highlight);
     highlight.dispose();
+    if (probe) probe.dispose();
+    if (debugHud) debugHud.dispose();
     canvas.removeEventListener('pointermove', onPointerMove);
   };
   window.addEventListener('pagehide', releaseControls, { once: true });
@@ -662,6 +683,8 @@ function boot() {
 
   /** @param {number} timeMs */
   function render(timeMs) {
+    if (debugHud) debugHud.update(timeMs);
+    if (probe) probe.beginFrame();
     governor.observeFrame(timeMs);
     const tierStep = governor.update(timeMs);
     if (tierStep >= 0) {

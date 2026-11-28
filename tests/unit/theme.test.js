@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { THEME, shadowCoversShop, contactDecals } from '../../src/world/theme.js';
+import { THEME, MOODS, shadowCoversShop, contactDecals } from '../../src/world/theme.js';
 import { OBSTACLES } from '../../src/world/layout.js';
-import { SKY_COLORS, SKY, SKY_RIDGE_LAYERS, CONTACT_AO } from '../../src/world/art.js';
+import { SKY_COLORS, DUSK_SKY_COLORS, SKY, SKY_RIDGE_LAYERS, CONTACT_AO } from '../../src/world/art.js';
 
 describe('theme lighting rig', () => {
   it('locks exposure and keeps budgets inside the render plan', () => {
@@ -33,6 +33,19 @@ describe('theme lighting rig', () => {
     expect(THEME.environmentIntensity).toBeLessThanOrEqual(0.8);
     expect(THEME.hemisphere.intensity).toBeGreaterThanOrEqual(0.6);
     expect(THEME.hemisphere.intensity).toBeLessThanOrEqual(0.8);
+  });
+
+  it('grades the dusk mood darker and warmer than day', () => {
+    expect(MOODS.day.sun.intensity).toBeGreaterThan(MOODS.dusk.sun.intensity);
+    expect(MOODS.dusk.exposure).toBeLessThanOrEqual(MOODS.day.exposure);
+    expect(MOODS.dusk.fogDensity).toBeGreaterThanOrEqual(MOODS.day.fogDensity);
+    expect(MOODS.dusk.sun.position[1]).toBeLessThan(MOODS.day.sun.position[1]);
+  });
+
+  it('derives the dusk sky palette from the same slots as day', () => {
+    expect(Object.keys(DUSK_SKY_COLORS).sort()).toEqual(Object.keys(SKY_COLORS).sort());
+    expect(DUSK_SKY_COLORS.zenith).not.toBe(SKY_COLORS.zenith);
+    expect(DUSK_SKY_COLORS.horizon).toMatch(/^#/);
   });
 
   it('authors a sun disc and valley ridges into the equirect sky', () => {

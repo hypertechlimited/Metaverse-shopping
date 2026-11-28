@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { OBSTACLES } from './layout.js';
 import { ARCHITECTURE } from './architecture.js';
-import { makeArt, makeTexture, drawSky, drawContactAO } from './art.js';
+import { makeArt, makeTexture, drawSky, drawContactAO, DUSK_SKY_COLORS } from './art.js';
+import { placedGeometry, mergedParts } from './merge.js';
 
 export const THEME = {
   exposure: 1.08,
@@ -24,6 +25,36 @@ export const THEME = {
     shadowFar: 32,
   },
   contact: { size: 256, opacity: 0.55, y: 0.004, renderOrder: 2, margin: 0.28, stripWidth: 0.56 },
+};
+
+/**
+ * @typedef {Object} MoodConfig
+ * @property {number} exposure
+ * @property {number} fogColor
+ * @property {number} fogDensity
+ * @property {number} environmentIntensity
+ * @property {{ sky: number, ground: number, intensity: number }} hemisphere
+ * @property {{ color: number, intensity: number, position: [number, number, number] }} sun
+ */
+
+/** @type {Record<'day' | 'dusk', MoodConfig>} */
+export const MOODS = {
+  day: {
+    exposure: THEME.exposure,
+    fogColor: THEME.fogColor,
+    fogDensity: THEME.fogDensity,
+    environmentIntensity: THEME.environmentIntensity,
+    hemisphere: THEME.hemisphere,
+    sun: { color: THEME.sun.color, intensity: THEME.sun.intensity, position: THEME.sun.position },
+  },
+  dusk: {
+    exposure: 1.0,
+    fogColor: 0x51385e,
+    fogDensity: 0.026,
+    environmentIntensity: 0.5,
+    hemisphere: { sky: 0x9a6fa0, ground: 0x40263c, intensity: 0.62 },
+    sun: { color: 0xff9e66, intensity: 1.5, position: [9, 3.2, 10] },
+  },
 };
 
 /** Shadow-extent guard: the directional frustum must cover the whole shop footprint. @param {number} extent @returns {boolean} */
@@ -67,26 +98,31 @@ export function contactDecals() {
   return decals;
 }
 
-/** @param {THREE.Scene} scene @param {THREE.WebGLRenderer} renderer @returns {{ dispose: () => void }} */
+/** @typedef {keyof typeof MOODS} MoodName */
+
+/** @param {THREE.Scene} scene @param {THREE.WebGLRenderer} renderer @returns {{ setMood: (mood: MoodName) => boolean, dispose: () => void }} */
 export function buildTheme(scene, renderer) {
-  renderer.toneMappingExposure = THEME.exposure;
-
-  const skyTexture = makeTexture(makeArt(THEME.skyWidth, THEME.skyHeight, drawSky), renderer);
-  skyTexture.mapping = THREE.EquirectangularReflectionMapping;
-  scene.background = skyTexture;
-  scene.fog = new THREE.FogExp2(THEME.fogColor, THEME.fogDensity);
-
   const pmrem = new THREE.PMREMGenerator(renderer);
-  const envMap = pmrem.fromEquirectangular(skyTexture).texture;
-  scene.environment = envMap;
-  scene.environmentIntensity = THEME.environmentIntensity;
+  /** @type {Record<MoodName, { texture: THREE.Texture, envMap: THREE.Texture }>} */
+  const skies = {
+    day: skyState(makeArt(THEME.skyWidth, THEME.skyHeight, drawSky)),
+    dusk: skyState(makeArt(THEME.skyWidth, THEME.skyHeight, (ctx, w, h) => drawSky(ctx, w, h, DUSK_SKY_COLORS))),
+  };
   pmrem.dispose();
+  scene.fog = new THREE.FogExp2(MOODS.day.fogColor, MOODS.day.fogDensity);
 
-  const hemisphere = new THREE.HemisphereLight(THEME.hemisphere.sky, THEME.hemisphere.ground, THEME.hemisphere.intensity);
+  /** @param {HTMLCanvasElement} canvas @returns {{ texture: THREE.Texture, envMap: THREE.Texture }} */
+  function skyState(canvas) {
+    const texture = makeTexture(canvas, renderer);
+    texture.mapping = THREE.EquirectangularReflectionMapping;
+    return { texture, envMap: pmrem.fromEquirectangular(texture).texture };
+  }
+
+  const hemisphere = new THREE.HemisphereLight(MOODS.day.hemisphere.sky, MOODS.day.hemisphere.ground, MOODS.day.hemisphere.intensity);
   scene.add(hemisphere);
 
-  const sun = new THREE.DirectionalLight(THEME.sun.color, THEME.sun.intensity);
-  sun.position.set(...THEME.sun.position);
+  const sun = new THREE.DirectionalLight(MOODS.day.sun.color, MOODS.day.sun.intensity);
+  sun.position.set(...MOODS.day.sun.position);
   sun.castShadow = true;
   sun.shadow.mapSize.set(THEME.sun.shadowMapSize, THEME.sun.shadowMapSize);
   sun.shadow.camera.left = -THEME.sun.shadowExtent;
@@ -107,31 +143,53 @@ export function buildTheme(scene, renderer) {
     opacity: THEME.contact.opacity,
     depthWrite: false,
   });
-  /** @type {THREE.Mesh[]} */
-  const decals = [];
-  for (const decal of contactDecals()) {
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(decal.width, decal.depth), aoMaterial);
-    mesh.rotation.x = -Math.PI / 2;
-    mesh.position.set(decal.x, THEME.contact.y, decal.z);
-    mesh.renderOrder = THEME.contact.renderOrder;
-    scene.add(mesh);
-    decals.push(mesh);
+  const decalParts = contactDecals().map((decal) =>
+    placedGeometry(new THREE.PlaneGeometry(decal.width, decal.depth), {
+      position: [decal.x, THEME.contact.y, decal.z],
+      rotation: [-Math.PI / 2, 0, 0],
+    }),
+  );
+  const decalMesh = new THREE.Mesh(mergedParts(decalParts), aoMaterial);
+  decalMesh.renderOrder = THEME.contact.renderOrder;
+  scene.add(decalMesh);
+
+  setMood('day');
+
+  /** @param {MoodName} mood @returns {boolean} */
+  function setMood(mood) {
+    const config = MOODS[mood];
+    if (!config) return false;
+    renderer.toneMappingExposure = config.exposure;
+    scene.background = skies[mood].texture;
+    scene.environment = skies[mood].envMap;
+    scene.environmentIntensity = config.environmentIntensity;
+    const fog = /** @type {THREE.FogExp2} */ (scene.fog);
+    fog.color.set(config.fogColor);
+    fog.density = config.fogDensity;
+    hemisphere.color.set(config.hemisphere.sky);
+    hemisphere.groundColor.set(config.hemisphere.ground);
+    hemisphere.intensity = config.hemisphere.intensity;
+    sun.color.set(config.sun.color);
+    sun.intensity = config.sun.intensity;
+    sun.position.set(...config.sun.position);
+    return true;
   }
 
   return {
+    setMood,
     dispose() {
-      for (const mesh of decals) {
-        mesh.geometry.dispose();
-        scene.remove(mesh);
-      }
+      decalMesh.geometry.dispose();
+      scene.remove(decalMesh);
       aoMaterial.dispose();
       aoTexture.dispose();
       scene.remove(hemisphere, sun, sun.target);
       scene.environment = null;
       scene.background = null;
       scene.fog = null;
-      envMap.dispose();
-      skyTexture.dispose();
+      for (const state of Object.values(skies)) {
+        state.envMap.dispose();
+        state.texture.dispose();
+      }
     },
   };
 }

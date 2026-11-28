@@ -6,6 +6,8 @@ Corner of a *galli* intersection, Mangal Bazar, Patan, Lalitpur.
 **Live on GitHub Pages:** [https://hypertechlimited.github.io/Metaverse-shopping/](https://hypertechlimited.github.io/Metaverse-shopping/)
 (automatic deploy on every merge to `main` — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md))
 
+**Status — release candidate (M5):** 74 draw calls at DPR-1 steady state (budget ≤ 80), 2.50 MB payload (518 KB gzipped), WebGL context-loss recovery, 20/20 golden suite green. Open `?debug=1` for the live perf HUD (FPS / CALLS / TRIS / DPR) and the seven-preset bar including Dusk.
+
 ## What This Is
 
 A production-grade **prototype** — not a toy demo — of a spatial commerce experience:
