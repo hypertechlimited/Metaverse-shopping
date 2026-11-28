@@ -57,7 +57,9 @@ export const NPC_PATHS = {
   'sathi-bhai': { from: [3.6, -5], to: [3.6, 5], period: 18, phase: 0.65 },
 };
 
-/** @type {Array<{ name: string, position: [number, number, number], lookAt: [number, number, number] }>} */
+/** @typedef {'day' | 'dusk'} MoodName */
+
+/** @type {Array<{ name: string, position: [number, number, number], lookAt: [number, number, number], mood?: MoodName }>} */
 export const CAMERA_PRESETS = [
   { name: 'Entrance', position: [6.8, 2.9, 7.6], lookAt: [0, 1.2, 0] },
   { name: 'Counter', position: [-0.8, 1.6, 3.2], lookAt: [-0.8, 1.2, 0.5] },
@@ -65,4 +67,5 @@ export const CAMERA_PRESETS = [
   { name: 'Front Pedi', position: [1.0, 1.5, 4.6], lookAt: [1.6, 0.8, 2.1] },
   { name: 'Corner', position: [3.4, 1.6, 3.4], lookAt: [1.3, 1.0, 1.3] },
   { name: 'Overview', position: [7.4, 4.6, 7.4], lookAt: [0, 0.8, 0] },
+  { name: 'Dusk', position: [-8.2, 2.1, 8.2], lookAt: [0, 1.4, 0], mood: 'dusk' },
 ];

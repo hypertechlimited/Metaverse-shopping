@@ -8,7 +8,8 @@
     "noEmit": true,
     "strict": true,
     "moduleDetection": "force",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["node"]
   },
   "include": ["src/**/*.js", "tests/**/*.js"],
   "exclude": ["vendor"]

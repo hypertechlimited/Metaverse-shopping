@@ -292,7 +292,6 @@ export function buildProps(scene, renderer) {
   );
   card.position.set(...qrPlacement.position);
   card.rotation.z = PROPS.qr.tilt;
-  card.castShadow = true;
   const qrFace = new THREE.Mesh(new THREE.PlaneGeometry(PROPS.qr.width * 0.82, PROPS.qr.width * 0.82), qrMaterial);
   qrFace.position.set(
     qrPlacement.position[0] + Math.sin(-PROPS.qr.tilt) * PROPS.qr.thickness,

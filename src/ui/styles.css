@@ -948,3 +948,25 @@ body[data-mode="landing"] .preset-bar { display: none; }
   .preset-bar { max-width: calc(100vw - 24px); flex-wrap: wrap; justify-content: center; }
   .preset-btn { padding: 10px 10px; }
 }
+
+/* --- M5 hardening: debug HUD (?debug=1) --- */
+
+.debug-hud {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  z-index: 20;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(20, 12, 8, 0.82);
+  color: var(--parchment);
+  font-family: var(--font-display);
+  font-size: 12px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.debug-hud-row { white-space: pre; }
+
+body[data-mode="landing"] .debug-hud { display: none; }

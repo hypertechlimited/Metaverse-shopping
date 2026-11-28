@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { makeArt, makeTexture, drawAripana } from './art.js';
+import { placedGeometry, mergedParts } from './merge.js';
 
 export const MANDALA = {
   size: 1.8,
@@ -46,17 +47,17 @@ export function buildAripana(scene, renderer) {
     polygonOffsetUnits: -2,
     depthWrite: false,
   });
-  const geometry = new THREE.PlaneGeometry(MANDALA.size, MANDALA.size);
-  const south = new THREE.Mesh(geometry, material);
-  south.rotation.x = -Math.PI / 2;
-  south.rotation.z = Math.PI / 8;
-  south.position.set(MANDALA.southPosition[0], MANDALA.ySouth, MANDALA.southPosition[2]);
-  south.receiveShadow = true;
-  scene.add(south);
-  const east = new THREE.Mesh(geometry, material);
-  east.rotation.x = -Math.PI / 2;
-  east.rotation.z = -Math.PI / 8;
-  east.position.set(MANDALA.eastPosition[0], MANDALA.yEast, MANDALA.eastPosition[2]);
-  east.receiveShadow = true;
-  scene.add(east);
+  const parts = [
+    placedGeometry(new THREE.PlaneGeometry(MANDALA.size, MANDALA.size), {
+      position: [MANDALA.southPosition[0], MANDALA.ySouth, MANDALA.southPosition[2]],
+      rotation: [-Math.PI / 2, 0, Math.PI / 8],
+    }),
+    placedGeometry(new THREE.PlaneGeometry(MANDALA.size, MANDALA.size), {
+      position: [MANDALA.eastPosition[0], MANDALA.yEast, MANDALA.eastPosition[2]],
+      rotation: [-Math.PI / 2, 0, -Math.PI / 8],
+    }),
+  ];
+  const aripana = new THREE.Mesh(mergedParts(parts), material);
+  aripana.receiveShadow = true;
+  scene.add(aripana);
 }

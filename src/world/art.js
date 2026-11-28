@@ -57,6 +57,24 @@ export const SKY = {
   puffCount: 9,
 };
 
+export const DUSK_SKY_COLORS = {
+  zenith: '#241b3f',
+  upper: '#4a3560',
+  band: '#a05a7a',
+  horizon: '#e8895a',
+  glow: '#ffc98a',
+  ground: '#3f2a35',
+  ridgeFar: 'rgba(90, 60, 90, 0.45)',
+  ridgeNear: '#2e1e2a',
+  sunCore: '#ffe9c4',
+  sunHalo: 'rgba(255, 160, 110, 0)',
+  sunHaloMid: 'rgba(255, 170, 120, 0.45)',
+  sunHaloInner: 'rgba(255, 214, 170, 0.9)',
+  streak: 'rgba(255, 210, 230, 0.08)',
+  puff: 'rgba(255, 200, 190, 0.3)',
+  puffFade: 'rgba(255, 200, 190, 0)',
+};
+
 export const SKY_CLOUDS = {
   streakYMin: 0.3,
   streakYSpread: 0.16,
@@ -75,31 +93,34 @@ function hash01(seed) {
   return Math.abs(Math.sin(seed) * 43758.5453) % 1;
 }
 
-/** @param {CanvasRenderingContext2D} ctx @param {number} w @param {number} h */
-function drawSun(ctx, w, h) {
+/** @typedef {typeof SKY_COLORS} SkyPalette */
+
+/** @param {CanvasRenderingContext2D} ctx @param {number} w @param {number} h @param {SkyPalette} colors */
+function drawSun(ctx, w, h, colors) {
   const cx = w * SKY.glowX;
   const cy = h * SKY.glowY;
   const halo = ctx.createRadialGradient(cx, cy, 2, cx, cy, w * SKY.haloRadius);
-  halo.addColorStop(0, SKY_COLORS.sunHaloInner);
-  halo.addColorStop(0.35, SKY_COLORS.sunHaloMid);
-  halo.addColorStop(1, SKY_COLORS.sunHalo);
+  halo.addColorStop(0, colors.sunHaloInner);
+  halo.addColorStop(0.35, colors.sunHaloMid);
+  halo.addColorStop(1, colors.sunHalo);
   ctx.fillStyle = halo;
   ctx.fillRect(cx - w * SKY.haloRadius, cy - w * SKY.haloRadius, w * SKY.haloRadius * 2, w * SKY.haloRadius * 2);
   const disc = ctx.createRadialGradient(cx, cy, 1, cx, cy, w * SKY.discRadius);
-  disc.addColorStop(0, SKY_COLORS.sunCore);
-  disc.addColorStop(0.75, SKY_COLORS.sunCore);
-  disc.addColorStop(1, SKY_COLORS.sunHalo);
+  disc.addColorStop(0, colors.sunCore);
+  disc.addColorStop(0.75, colors.sunCore);
+  disc.addColorStop(1, colors.sunHalo);
   ctx.fillStyle = disc;
   ctx.beginPath();
   ctx.arc(cx, cy, w * SKY.discRadius, 0, Math.PI * 2);
   ctx.fill();
 }
 
-/** @param {CanvasRenderingContext2D} ctx @param {number} w @param {number} h */
-function drawRidges(ctx, w, h) {
-  for (const layer of SKY_RIDGE_LAYERS) {
+/** @param {CanvasRenderingContext2D} ctx @param {number} w @param {number} h @param {SkyPalette} colors */
+function drawRidges(ctx, w, h, colors) {
+  const ridgeColors = [colors.ridgeFar, colors.ridgeNear];
+  SKY_RIDGE_LAYERS.forEach((layer, index) => {
     const baseY = h * layer.baseY;
-    ctx.fillStyle = layer.color;
+    ctx.fillStyle = ridgeColors[index];
     ctx.beginPath();
     ctx.moveTo(0, h);
     for (let x = 0; x <= w; x += 8) {
@@ -111,16 +132,16 @@ function drawRidges(ctx, w, h) {
     ctx.lineTo(w, h);
     ctx.closePath();
     ctx.fill();
-  }
+  });
 }
 
-/** @param {CanvasRenderingContext2D} ctx @param {number} w @param {number} h */
-function drawClouds(ctx, w, h) {
+/** @param {CanvasRenderingContext2D} ctx @param {number} w @param {number} h @param {SkyPalette} colors */
+function drawClouds(ctx, w, h, colors) {
   for (let i = 0; i < SKY.streakCount; i++) {
     const cy = h * (SKY_CLOUDS.streakYMin + hash01(i * 91.7 + 3.3) * SKY_CLOUDS.streakYSpread);
     const cx = hash01(i * 47.29 + 8.1) * w;
     const cw = w * (0.08 + hash01(i * 12.9898) * 0.16);
-    ctx.fillStyle = SKY_COLORS.streak;
+    ctx.fillStyle = colors.streak;
     ctx.beginPath();
     ctx.ellipse(cx, cy, cw, 2 + (i % 3) * 2, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -130,8 +151,8 @@ function drawClouds(ctx, w, h) {
     const cx = hash01(i * 29.3 + 5.5) * w;
     const cw = w * (0.05 + hash01(i * 9.13) * 0.09);
     const puff = ctx.createRadialGradient(cx, cy, 1, cx, cy, cw);
-    puff.addColorStop(0, SKY_COLORS.puff);
-    puff.addColorStop(1, SKY_COLORS.puffFade);
+    puff.addColorStop(0, colors.puff);
+    puff.addColorStop(1, colors.puffFade);
     ctx.globalAlpha = SKY_CLOUDS.puffAlpha;
     ctx.fillStyle = puff;
     ctx.fillRect(cx - cw, cy - cw * 0.4, cw * 2, cw * 0.8);
@@ -175,20 +196,21 @@ export function drawPlaster(ctx, w, h) {
 }
 
 /** @param {CanvasRenderingContext2D} ctx @param {number} w @param {number} h */
-export function drawSky(ctx, w, h) {
+/** @param {CanvasRenderingContext2D} ctx @param {number} w @param {number} h @param {SkyPalette} [colors] */
+export function drawSky(ctx, w, h, colors = SKY_COLORS) {
   const grad = ctx.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0, SKY_COLORS.zenith);
-  grad.addColorStop(0.3, SKY_COLORS.upper);
-  grad.addColorStop(0.44, SKY_COLORS.band);
-  grad.addColorStop(0.52, SKY_COLORS.horizon);
-  grad.addColorStop(0.58, SKY_COLORS.glow);
-  grad.addColorStop(0.66, SKY_COLORS.ground);
-  grad.addColorStop(1, SKY_COLORS.ground);
+  grad.addColorStop(0, colors.zenith);
+  grad.addColorStop(0.3, colors.upper);
+  grad.addColorStop(0.44, colors.band);
+  grad.addColorStop(0.52, colors.horizon);
+  grad.addColorStop(0.58, colors.glow);
+  grad.addColorStop(0.66, colors.ground);
+  grad.addColorStop(1, colors.ground);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, h);
-  drawSun(ctx, w, h);
-  drawRidges(ctx, w, h);
-  drawClouds(ctx, w, h);
+  drawSun(ctx, w, h, colors);
+  drawRidges(ctx, w, h, colors);
+  drawClouds(ctx, w, h, colors);
 }
 
 export const CONTACT_AO = { size: 256, inner: 'rgba(16, 10, 6, 0.55)', outer: 'rgba(16, 10, 6, 0)' };

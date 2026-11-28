@@ -18,6 +18,7 @@ const PRESETS = [
   { name: 'Front Pedi', position: [1.0, 1.5, 4.6] },
   { name: 'Corner', position: [3.4, 1.6, 3.4] },
   { name: 'Overview', position: [7.4, 4.6, 7.4] },
+  { name: 'Dusk', position: [-8.2, 2.1, 8.2] },
 ];
 
 /** @param {string} name */
@@ -55,7 +56,7 @@ async function flyToPreset(page, name, position) {
   await page.screenshot({ path: `test-results/golden-preset-${slug(name)}.png`, fullPage: false });
 }
 
-test('golden presets — navigate all six camera presets', async ({ page }) => {
+test('golden presets — navigate all seven camera presets', async ({ page }) => {
   test.setTimeout(180_000);
   /** @type {string[]} */
   const errors = [];
@@ -67,7 +68,7 @@ test('golden presets — navigate all six camera presets', async ({ page }) => {
   await enterExplore(page);
 
   await expect(page.locator('.preset-bar')).toBeVisible();
-  await expect(page.locator('.preset-btn')).toHaveCount(7);
+  await expect(page.locator('.preset-btn')).toHaveCount(8);
 
   for (const preset of PRESETS) {
     await flyToPreset(page, preset.name, preset.position);

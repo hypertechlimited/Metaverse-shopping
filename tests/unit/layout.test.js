@@ -23,12 +23,18 @@ describe('layout spec parity', () => {
     expect(ENTER_POSITION).toEqual([6.8, 2.9, 7.6]);
   });
 
-  it('defines exactly six camera presets with valid geometry', () => {
-    expect(CAMERA_PRESETS).toHaveLength(6);
+  it('defines exactly seven camera presets with valid geometry', () => {
+    expect(CAMERA_PRESETS).toHaveLength(7);
     for (const preset of CAMERA_PRESETS) {
       expect(preset.position).toHaveLength(3);
       expect(preset.lookAt).toHaveLength(3);
       expect(preset.name.length).toBeGreaterThan(0);
     }
+  });
+
+  it('stages the dusk mood on exactly one exterior preset', () => {
+    const duskPresets = CAMERA_PRESETS.filter((preset) => preset.mood === 'dusk');
+    expect(duskPresets).toHaveLength(1);
+    expect(duskPresets[0].name).toBe('Dusk');
   });
 });
