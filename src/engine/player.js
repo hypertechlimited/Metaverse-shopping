@@ -10,6 +10,7 @@ export const PLAYER = {
   eyeRate: 3.0,
   lookAhead: 6,
   dragYawPerPixel: 0.005,
+  arrivalRadius: 0.25,
 };
 
 /**
@@ -33,6 +34,9 @@ export const PLAYER = {
  *   setTurnInput: (turn: number) => void,
  *   stepForward: (distance: number) => void,
  *   stepTurn: (angle: number) => void,
+ *   setPath: (points: Array<[number, number]>) => void,
+ *   clearPath: () => void,
+ *   hasPath: () => boolean,
  *   syncFrom: (position: [number, number, number], yaw: number) => void,
  *   isVisitorEye: () => boolean,
  *   update: (fixedDelta: number) => void,
@@ -57,6 +61,9 @@ export function createPlayer(options) {
   let moveStrafe = 0;
   let turn = 0;
   let visitorEye = false;
+  /** @type {Array<[number, number]>} */
+  let path = [];
+  let pathIndex = 0;
 
   const approachEye = (/** @type {number} */ fixedDelta) => {
     if (reducedMotion) return PLAYER.eyeHeight;
@@ -83,6 +90,10 @@ export function createPlayer(options) {
     setMoveInput(forward, strafe) {
       moveForward = Number.isFinite(forward) ? Math.min(1, Math.max(-1, forward)) : 0;
       moveStrafe = Number.isFinite(strafe) ? Math.min(1, Math.max(-1, strafe)) : 0;
+      if (moveForward !== 0 || moveStrafe !== 0) {
+        path = [];
+        pathIndex = 0;
+      }
     },
     setTurnInput(value) {
       turn = Number.isFinite(value) ? Math.min(1, Math.max(-1, value)) : 0;
@@ -96,6 +107,25 @@ export function createPlayer(options) {
     stepTurn(angle) {
       yaw += angle;
       visitorEye = false;
+      path = [];
+      pathIndex = 0;
+    },
+    setPath(points) {
+      if (!Array.isArray(points)) throw new Error('setPath requires a waypoint array');
+      for (const point of points) {
+        if (!Array.isArray(point) || point.length !== 2 || !Number.isFinite(point[0]) || !Number.isFinite(point[1])) {
+          throw new Error('setPath requires [x, z] waypoints');
+        }
+      }
+      path = points.map((point) => [point[0], point[1]]);
+      pathIndex = 0;
+    },
+    clearPath() {
+      path = [];
+      pathIndex = 0;
+    },
+    hasPath() {
+      return pathIndex < path.length;
     },
     syncFrom(position, nextYaw) {
       x = position[0];
@@ -111,6 +141,29 @@ export function createPlayer(options) {
         visitorEye = false;
       }
       const length = Math.hypot(moveForward, moveStrafe);
+      if (length > 0) {
+        visitorEye = false;
+        path = [];
+        pathIndex = 0;
+      }
+      if (length === 0 && pathIndex < path.length) {
+        const target = path[pathIndex];
+        const dx = target[0] - x;
+        const dz = target[1] - z;
+        const dist = Math.hypot(dx, dz);
+        if (dist <= PLAYER.arrivalRadius) {
+          pathIndex++;
+        } else {
+          const scale = Math.min(1, (PLAYER.moveSpeed * fixedDelta) / dist);
+          const faceYaw = Math.atan2(dx, dz);
+          const turnDelta = Math.atan2(Math.sin(faceYaw - yaw), Math.cos(faceYaw - yaw));
+          yaw += Math.sign(turnDelta) * Math.min(Math.abs(turnDelta), PLAYER.turnSpeed * fixedDelta);
+          const resolved = moveWithCollision(x, z, dx * scale, dz * scale, PLAYER_RADIUS, boxes, street);
+          x = resolved.x;
+          z = resolved.z;
+          visitorEye = false;
+        }
+      }
       if (length > 0) {
         visitorEye = false;
         const scale = (PLAYER.moveSpeed * fixedDelta) / Math.max(1, length);

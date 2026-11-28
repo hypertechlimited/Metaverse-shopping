@@ -6,13 +6,18 @@ import { createStorage } from './engine/storage.js';
 import { createStore } from './engine/store.js';
 import { createCameraRig } from './engine/cameraRig.js';
 import { createPlayer, PLAYER } from './engine/player.js';
+import { buildNavGrid, findPath } from './engine/nav.js';
+import { createPerfGovernor } from './engine/perfGovernor.js';
+import { createPeerFeed } from './engine/presenceFeed.js';
+import { addSample, trimBuffer, sampleAt } from './engine/avatar.js';
+import { buildPeer } from './world/peer.js';
 import { createTour } from './engine/tour.js';
 import { createBell } from './engine/audio.js';
 import { getSku, getVariant, initialStockMap } from './commerce/catalog.js';
 import { addToCart, setCartQty, cartCount, cartSubtotal, checkoutCart, restoreCart } from './commerce/cart.js';
 import { formatRupees } from './commerce/pricing.js';
 import { newBillId, buildBill, renderBill } from './commerce/bill.js';
-import { OBSTACLES, SHELL, LANDING_ORBIT, ENTER_POSITION, CAMERA_PRESETS, STREET } from './world/layout.js';
+import { OBSTACLES, SHELL, LANDING_ORBIT, ENTER_POSITION, CAMERA_PRESETS, STREET, PLAYER_RADIUS } from './world/layout.js';
 import { makeArt, makeTexture, makeBump, drawBrick, drawBrickBump, drawBrickRoughness, drawCobble, drawCobbleBump, drawCobbleRoughness } from './world/art.js';
 import { buildTheme } from './world/theme.js';
 import { buildArchitecture } from './world/architecture.js';
@@ -32,6 +37,7 @@ import { createCatalogDrawer } from './ui/catalogDrawer.js';
 import { createInspector } from './ui/inspector.js';
 import { createHoverTip, tipLines } from './ui/hoverTip.js';
 import { createPresetBar } from './ui/presetBar.js';
+import { createJoystick } from './ui/joystick.js';
 
 function supportsWebGL2() {
   const probe = document.createElement('canvas');
@@ -158,6 +164,14 @@ function boot() {
   buildProps(scene, renderer);
   const products = buildProducts(scene);
   const npcs = buildNpcs(scene, renderer);
+
+  const navGrid = buildNavGrid(OBSTACLES, STREET, { radius: PLAYER_RADIUS });
+  const peer = buildPeer(scene, renderer);
+  const peerFeed = createPeerFeed({ path: { from: [-4, 2.4], to: [6, 2.4], period: 20, phase: 0 }, seed: 7 });
+  /** @type {import('./engine/avatar.js').AvatarSample[]} */
+  const peerBuffer = [];
+  const basePixelRatio = Math.min(window.devicePixelRatio, 2);
+  const governor = createPerfGovernor();
 
   /** @type {ReturnType<typeof createPostChain>} */
   let postChain = null;
@@ -389,10 +403,18 @@ function boot() {
       hoverTip.hide();
     };
     document.addEventListener('keydown', onInspectKey);
+    const exploreJoystick = createJoystick(body, {
+      onChange: (forward, strafe) => {
+        if (store.get().mode !== 'explore' || !player) return;
+        stopTour();
+        player.setMoveInput(forward, strafe);
+      },
+    });
     return () => {
       movementKeys.dispose();
       exploreDrag.dispose();
       exploreDpad.dispose();
+      exploreJoystick.dispose();
       document.removeEventListener('keydown', onInspectKey);
     };
   }
@@ -403,11 +425,31 @@ function boot() {
     return name ? `${who}: नमस्ते ${name}! के चाहियो?` : `${who}: नमस्ते! के चाहियो?`;
   };
 
+  /** @param {number} clientX @param {number} clientY @returns {[number, number] | null} */
+  function groundPointAt(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    pointerNdc.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+    raycaster.setFromCamera(pointerNdc, camera);
+    const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const point = new THREE.Vector3();
+    const groundHit = raycaster.ray.intersectPlane(groundPlane, point);
+    return groundHit ? [point.x, point.z] : null;
+  }
+
   canvas.addEventListener('click', (event) => {
     if (!guard.wasClick(/** @type {PointerEvent} */ (event))) return;
     if (store.get().mode !== 'explore' || inspector) return;
     const hit = pickAt(event.clientX, event.clientY);
-    if (!hit) return;
+    if (!hit) {
+      if (!player) return;
+      const target = groundPointAt(event.clientX, event.clientY);
+      if (!target) return;
+      stopTour();
+      hoverTip.hide();
+      const path = findPath(navGrid, [player.getX(), player.getZ()], target);
+      if (path) player.setPath(path);
+      return;
+    }
     if (hit.type === 'npc') {
       createToast(body, npcGreeting(hit.id));
       return;
@@ -573,6 +615,7 @@ function boot() {
     presetBar.dispose();
     products.dispose();
     npcs.dispose();
+    peer.dispose();
     scene.remove(highlight);
     highlight.dispose();
     canvas.removeEventListener('pointermove', onPointerMove);
@@ -619,6 +662,21 @@ function boot() {
 
   /** @param {number} timeMs */
   function render(timeMs) {
+    governor.observeFrame(timeMs);
+    const tierStep = governor.update(timeMs);
+    if (tierStep >= 0) {
+      renderer.setPixelRatio(basePixelRatio * governor.dpr());
+      mountPost();
+    }
+    if (store.get().mode === 'explore') {
+      for (const packet of peerFeed.poll(timeMs)) addSample(peerBuffer, packet);
+      trimBuffer(peerBuffer, timeMs);
+      const peerPose = sampleAt(peerBuffer, timeMs);
+      if (peerPose) peer.apply(peerPose);
+      else peer.setVisible(false);
+    } else {
+      peer.setVisible(false);
+    }
     culture.update(timeMs / 1000);
     atmosphere.update(timeMs / 1000);
     npcs.update(timeMs / 1000);
