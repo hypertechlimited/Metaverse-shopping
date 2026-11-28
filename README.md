@@ -6,7 +6,7 @@ Corner of a *galli* intersection, Mangal Bazar, Patan, Lalitpur.
 **Live on GitHub Pages:** [https://hypertechlimited.github.io/Metaverse-shopping/](https://hypertechlimited.github.io/Metaverse-shopping/)
 (automatic deploy on every merge to `main` — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md))
 
-**Status — release candidate (M5):** 74 draw calls at DPR-1 steady state (budget ≤ 80), 2.50 MB payload (518 KB gzipped), WebGL context-loss recovery, 20/20 golden suite green. Open `?debug=1` for the live perf HUD (FPS / CALLS / TRIS / DPR) and the seven-preset bar including Dusk.
+**Status — release candidate (M5.5):** 74 draw calls at DPR-1 steady state (budget ≤ 80), 2.50 MB payload (518 KB gzipped), PWA installable with offline shell, INP + error telemetry under `?debug=1`, adaptive DPR governor, WebGL context-loss recovery, 20/20 golden suite green. **Next: M6–M9** — shelf merchandising (facings + price rails), fixture styles (Traditional / Modern / Mini Super-Mart), aim-dot reticle + mobile touch UX, label atlas with inspired-by packaging. See [docs/RETAIL-DESIGN.md](docs/RETAIL-DESIGN.md) and [docs/TASKS.md](docs/TASKS.md).
 
 ## What This Is
 
@@ -45,7 +45,8 @@ ES modules + import maps require HTTP — `file://` will not work.
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, module boundaries, data flow |
 | [docs/GUIDELINES.md](docs/GUIDELINES.md) | Coding rules, design rules, performance budgets |
-| [docs/TASKS.md](docs/TASKS.md) | Milestone breakdown M0–M5 with acceptance criteria |
+| [docs/TASKS.md](docs/TASKS.md) | Milestone breakdown M0–M5 done, M6–M9 planned with acceptance criteria |
+| [docs/RETAIL-DESIGN.md](docs/RETAIL-DESIGN.md) | M6–M9 design brief: shelf merchandising, fixture styles, aim-dot reticle, mobile touch, label atlas + web research |
 | [docs/TESTING.md](docs/TESTING.md) | Golden test protocol and verification gates |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | GitHub Pages deploy workflow, base-path and payload rules |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Challenged roadmap, device matrix, Supabase phase, long vision |
