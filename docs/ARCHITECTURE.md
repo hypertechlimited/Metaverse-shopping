@@ -20,6 +20,8 @@ index.html
        │                └─ engine/collision.js     (reads OBSTACLES from layout.js)
        └─ engine/audio.js   (WebAudio bus; bell chord 528/792/1056 Hz, gesture-gated)
        └─ engine/storage.js (try/catch localStorage, schema key: sagarmatha_metaverse_v3)
+       └─ engine/inp.js + engine/telemetry.js (device telemetry; drain target lands in Phase S)
+       └─ engine/pwa.js     (service-worker registration; update toast; fails soft)
 ```
 
 Prohibited: `ui/` importing `world/` internals; `world/` importing `ui/`; anything in `commerce/` importing DOM or Three.js.

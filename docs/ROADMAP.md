@@ -25,7 +25,7 @@ No native apps, no headset requirement. The metaverse ships in the browser.
 
 ## Phase Plan
 
-- **Phase 0 — Production-Grade Prototype (M0–M5, current).** Everything above; zero backend; localStorage persistence. Done = all golden tests green in CI.
+- **Phase 0 — Production-Grade Prototype (M0–M5.5, current).** Everything above; zero backend; localStorage persistence; installable offline PWA with client-side INP/error telemetry (M5.5). Done = all golden tests green in CI.
 - **Phase S — Supabase.** `@supabase/supabase-js ^2.119.2`.
   - Schema: `products`, `variants`, `stock_movements` (ledger, not mutable counters), `orders`, `order_items`.
   - Oversell guard moves server-side: Postgres RPC `checkout(cart jsonb)` in a transaction with `SELECT ... FOR UPDATE` — client never writes stock directly; RLS denies it.
