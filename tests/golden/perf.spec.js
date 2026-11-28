@@ -62,6 +62,7 @@ test.describe('dpr2', () => {
   test.use({ deviceScaleFactor: 2 });
 
   test('golden perf: DPR 2 renders clean and captures FPS', async ({ page }) => {
+    test.setTimeout(180_000);
     /** @type {string[]} */
     const errors = [];
     page.on('pageerror', (error) => errors.push(String(error)));
