@@ -72,6 +72,57 @@ export function createDragStream(element, { onDrag }) {
   };
 }
 
+export const MOVE_KEYS = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
+
+/**
+ * WASD + arrow movement axes for explore mode: `forward`/`strafe` in [-1, 1],
+ * `turn` for the left/right arrows. Reports on every change; clears on blur.
+ * @param {{ addEventListener: typeof window.addEventListener, removeEventListener: typeof window.removeEventListener }} target
+ * @param {{ onChange: (axes: { forward: number, strafe: number, turn: number }) => void }} handlers
+ * @returns {{ axes: () => { forward: number, strafe: number, turn: number }, dispose: () => void }}
+ */
+export function createKeyAxis(target, { onChange }) {
+  /** @type {Set<string>} */
+  const pressed = new Set();
+
+  const axes = () => ({
+    forward: (pressed.has('KeyW') || pressed.has('ArrowUp') ? 1 : 0) - (pressed.has('KeyS') || pressed.has('ArrowDown') ? 1 : 0),
+    strafe: (pressed.has('KeyD') ? 1 : 0) - (pressed.has('KeyA') ? 1 : 0),
+    turn: (pressed.has('ArrowRight') ? 1 : 0) - (pressed.has('ArrowLeft') ? 1 : 0),
+  });
+
+  const report = () => onChange(axes());
+
+  const onKeyDown = (/** @type {KeyboardEvent} */ event) => {
+    if (!MOVE_KEYS.has(event.code) || event.repeat) return;
+    pressed.add(event.code);
+    report();
+  };
+  const onKeyUp = (/** @type {KeyboardEvent} */ event) => {
+    if (!MOVE_KEYS.has(event.code)) return;
+    pressed.delete(event.code);
+    report();
+  };
+  const onBlur = () => {
+    if (pressed.size === 0) return;
+    pressed.clear();
+    report();
+  };
+
+  target.addEventListener('keydown', /** @type {EventListener} */ (onKeyDown));
+  target.addEventListener('keyup', /** @type {EventListener} */ (onKeyUp));
+  target.addEventListener('blur', onBlur);
+  return {
+    axes,
+    dispose() {
+      target.removeEventListener('keydown', /** @type {EventListener} */ (onKeyDown));
+      target.removeEventListener('keyup', /** @type {EventListener} */ (onKeyUp));
+      target.removeEventListener('blur', onBlur);
+      pressed.clear();
+    },
+  };
+}
+
 /**
  * @param {HTMLElement} element
  * @param {(entry: { width: number, height: number }) => void} onResize

@@ -75,16 +75,24 @@ const ARIA_LABELS = {
   down: 'Zoom camera out',
 };
 
+export const MOVE_LABELS = {
+  left: 'घुम्नुहोस् बायाँ · Turn left',
+  right: 'घुम्नुहोस् दायाँ · Turn right',
+  up: 'अगाडि हिँड्नुहोस् · Walk forward',
+  down: 'पछाडि हिँड्नुहोस् · Walk backward',
+};
+
 /**
  * @param {HTMLElement} host
  * @param {{ onDirection: (direction: Direction) => void }} handlers
+ * @param {{ labels?: Record<Direction, string>, groupLabel?: string }} [options]
  * @returns {{ dispose: () => void }}
  */
-export function createDpad(host, handlers) {
+export function createDpad(host, handlers, options = {}) {
   const pad = document.createElement('div');
   pad.className = 'dpad';
   pad.setAttribute('role', 'group');
-  pad.setAttribute('aria-label', 'Camera controls');
+  pad.setAttribute('aria-label', options.groupLabel ?? 'Camera controls');
   host.appendChild(pad);
 
   /** @type {Array<() => void>} */
@@ -94,7 +102,7 @@ export function createDpad(host, handlers) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `dpad-btn dpad-${direction}`;
-    button.setAttribute('aria-label', ARIA_LABELS[direction]);
+    button.setAttribute('aria-label', (options.labels ?? ARIA_LABELS)[direction]);
     button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${CHEVRONS[direction]}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     pad.appendChild(button);
 

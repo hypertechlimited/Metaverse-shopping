@@ -1,15 +1,18 @@
 import * as THREE from 'three';
 import { createTimestep } from './engine/loop.js';
-import { createPointerGuard, createDragStream, observeResize } from './engine/input.js';
+import { createPointerGuard, createDragStream, observeResize, createKeyAxis } from './engine/input.js';
 import { createPostChain } from './engine/post.js';
 import { createStorage } from './engine/storage.js';
 import { createStore } from './engine/store.js';
-import { getSku, initialStockMap } from './commerce/catalog.js';
-import { addToCart, setCartQty, cartCount, cartSubtotal, checkoutCart, restoreCart } from './commerce/cart.js';
-import { newBillId, buildBill, renderBill } from './commerce/bill.js';
 import { createCameraRig } from './engine/cameraRig.js';
+import { createPlayer, PLAYER } from './engine/player.js';
+import { createTour } from './engine/tour.js';
 import { createBell } from './engine/audio.js';
-import { OBSTACLES, SHELL, LANDING_ORBIT, ENTER_POSITION, CAMERA_PRESETS } from './world/layout.js';
+import { getSku, getVariant, initialStockMap } from './commerce/catalog.js';
+import { addToCart, setCartQty, cartCount, cartSubtotal, checkoutCart, restoreCart } from './commerce/cart.js';
+import { formatRupees } from './commerce/pricing.js';
+import { newBillId, buildBill, renderBill } from './commerce/bill.js';
+import { OBSTACLES, SHELL, LANDING_ORBIT, ENTER_POSITION, CAMERA_PRESETS, STREET } from './world/layout.js';
 import { makeArt, makeTexture, makeBump, drawBrick, drawBrickBump, drawBrickRoughness, drawCobble, drawCobbleBump, drawCobbleRoughness } from './world/art.js';
 import { buildTheme } from './world/theme.js';
 import { buildArchitecture } from './world/architecture.js';
@@ -17,14 +20,18 @@ import { buildCulture } from './world/culture.js';
 import { buildAripana } from './world/mandala.js';
 import { buildAtmosphere } from './world/atmosphere.js';
 import { buildProps } from './world/props.js';
+import { buildProducts } from './world/products.js';
+import { buildNpcs, npcName } from './world/npc.js';
 import { buildFacades } from './world/facades.js';
 import { drawThumb } from './world/thumbs.js';
-import { createDpad, createKeyboardControl, dragOrbit, clampOrbitRadius, DPAD, directionVector } from './ui/dpad.js';
+import { createDpad, createKeyboardControl, dragOrbit, clampOrbitRadius, DPAD, directionVector, MOVE_LABELS } from './ui/dpad.js';
 import { createLandingOverlay } from './ui/landing.js';
 import { createToast } from './ui/toast.js';
 import { createHud } from './ui/hud.js';
 import { createCatalogDrawer } from './ui/catalogDrawer.js';
 import { createInspector } from './ui/inspector.js';
+import { createHoverTip, tipLines } from './ui/hoverTip.js';
+import { createPresetBar } from './ui/presetBar.js';
 
 function supportsWebGL2() {
   const probe = document.createElement('canvas');
@@ -149,6 +156,8 @@ function boot() {
   buildAripana(scene, renderer);
   const atmosphere = buildAtmosphere(scene, renderer, { reducedMotion });
   buildProps(scene, renderer);
+  const products = buildProducts(scene);
+  const npcs = buildNpcs(scene, renderer);
 
   /** @type {ReturnType<typeof createPostChain>} */
   let postChain = null;
@@ -192,9 +201,220 @@ function boot() {
   });
 
   const guard = createPointerGuard(canvas);
+
+  const highlight = new THREE.BoxHelper(products.proxies[0], 0xfbbf24);
+  highlight.visible = false;
+  scene.add(highlight);
+
+  const raycaster = new THREE.Raycaster();
+  const pointerNdc = new THREE.Vector2();
+  const lookDir = new THREE.Vector3();
+  const pointerClient = { x: 0, y: 0 };
+  let pointerDirty = false;
+  let hoveredProductId = /** @type {string | null} */ (null);
+  let hoveredNpcId = /** @type {string | null} */ (null);
+  let player = /** @type {ReturnType<typeof createPlayer> | null} */ (null);
+  let disposeExploreControls = /** @type {(() => void) | null} */ (null);
+
+  const hoverTip = createHoverTip(body);
+  const tour = createTour(CAMERA_PRESETS.map((preset) => preset.name));
+
+  const clearHover = () => {
+    hoveredProductId = null;
+    hoveredNpcId = null;
+    highlight.visible = false;
+    hoverTip.hide();
+  };
+
+  const proxyFor = (/** @type {string} */ id) => {
+    const proxy = products.proxies.find((entry) => entry.userData.product === id);
+    return proxy ?? null;
+  };
+
+  /** @param {number} clientX @param {number} clientY @returns {{ type: 'product' | 'npc', id: string } | null} */
+  function pickAt(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    pointerNdc.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+    raycaster.setFromCamera(pointerNdc, camera);
+    const productHit = raycaster.intersectObjects(products.proxies, false)[0];
+    if (productHit) return { type: 'product', id: /** @type {string} */ (productHit.object.userData.product) };
+    const npcHit = raycaster.intersectObjects(npcs.npcs.map((npc) => npc.proxy), false)[0];
+    if (npcHit) return { type: 'npc', id: /** @type {string} */ (npcHit.object.userData.npcId) };
+    return null;
+  }
+
+  function applyHover() {
+    if (store.get().mode !== 'explore' || inspector) {
+      clearHover();
+      return;
+    }
+    const hit = pickAt(pointerClient.x, pointerClient.y);
+    if (!hit) {
+      clearHover();
+      return;
+    }
+    if (hit.type === 'npc') {
+      hoveredProductId = null;
+      hoveredNpcId = hit.id;
+      highlight.visible = false;
+      hoverTip.show(
+        { titleNp: npcName(hit.id).nameNp, titleEn: hit.id === 'pasale-dai' ? 'Shopkeeper' : 'Neighbor', price: '', stock: 'क्लिक गर्नुहोस् · Click to greet' },
+        pointerClient.x,
+        pointerClient.y,
+      );
+      return;
+    }
+    const sku = getSku(hit.id);
+    const stock = store.get().stockMap[hit.id] ?? 0;
+    const proxy = proxyFor(hit.id);
+    if (proxy) {
+      highlight.setFromObject(proxy);
+      highlight.visible = true;
+    }
+    hoveredProductId = hit.id;
+    hoveredNpcId = null;
+    hoverTip.show(tipLines(sku, stock, formatRupees(getVariant(hit.id, 0).price)), pointerClient.x, pointerClient.y);
+  }
+
+  const onPointerMove = (/** @type {PointerEvent} */ event) => {
+    pointerClient.x = event.clientX;
+    pointerClient.y = event.clientY;
+    pointerDirty = true;
+  };
+  canvas.addEventListener('pointermove', onPointerMove);
+
+  store.subscribe(() => {
+    if (store.get().mode === 'explore') pointerDirty = true;
+  });
+
+  const stopTour = () => {
+    if (tour.isActive()) {
+      tour.stop();
+      presetBar.setTourActive(false);
+    }
+  };
+
+  /** @param {string} name */
+  function beginFlight(name) {
+    const preset = CAMERA_PRESETS.find((entry) => entry.name === name);
+    if (!preset) return;
+    if (store.get().mode !== 'explore') return;
+    store.set({ mode: 'transition' });
+    const origin = /** @type {[number, number, number]} */ ([camera.position.x, camera.position.y, camera.position.z]);
+    rig.beginTransition(
+      preset.position,
+      preset.lookAt,
+      {
+        position: origin,
+        lookAt: player ? player.lookAtPoint() : [...preset.lookAt],
+      },
+    );
+  }
+
+  /** @param {string} name */
+  function flyToPreset(name) {
+    stopTour();
+    beginFlight(name);
+  }
+
+  function toggleTour() {
+    if (tour.isActive()) {
+      stopTour();
+      return;
+    }
+    if (store.get().mode !== 'explore') return;
+    tour.start();
+    presetBar.setTourActive(true);
+  }
+
+  const presetBar = createPresetBar(body, {
+    presets: CAMERA_PRESETS,
+    onPreset: flyToPreset,
+    onTourToggle: toggleTour,
+  });
+
+  function resyncPlayerFromCamera() {
+    camera.getWorldDirection(lookDir);
+    const pose = /** @type {[number, number, number]} */ ([camera.position.x, camera.position.y, camera.position.z]);
+    const yaw = Math.atan2(lookDir.x, lookDir.z);
+    if (!player) {
+      player = createPlayer({
+        position: pose,
+        yaw,
+        boxes: OBSTACLES,
+        street: STREET,
+        reducedMotion,
+      });
+      disposeExploreControls = attachExploreControls();
+      return;
+    }
+    player.syncFrom(pose, yaw);
+  }
+
+  function attachExploreControls() {
+    const movementKeys = createKeyAxis(window, {
+      onChange: (axes) => {
+        if (store.get().mode !== 'explore' || !player) return;
+        stopTour();
+        player.setMoveInput(axes.forward, axes.strafe);
+        player.setTurnInput(axes.turn);
+      },
+    });
+    const exploreDrag = createDragStream(canvas, {
+      onDrag: (dx) => {
+        if (!player) return;
+        stopTour();
+        if (store.get().mode !== 'explore') return;
+        player.stepTurn(-dx * PLAYER.dragYawPerPixel);
+      },
+    });
+    const exploreDpad = createDpad(
+      body,
+      {
+        onDirection: (direction) => {
+          if (store.get().mode !== 'explore' || !player) return;
+          stopTour();
+          if (direction === 'up') player.stepForward(PLAYER.stepDistance);
+          else if (direction === 'down') player.stepForward(-PLAYER.stepDistance);
+          else if (direction === 'left') player.stepTurn(-PLAYER.stepTurn);
+          else player.stepTurn(PLAYER.stepTurn);
+        },
+      },
+      { labels: MOVE_LABELS, groupLabel: 'हिँड्ने नियन्त्रण · Movement' },
+    );
+    const onInspectKey = (/** @type {KeyboardEvent} */ event) => {
+      if (event.key !== 'e' && event.key !== 'E') return;
+      if (store.get().mode !== 'explore' || inspector || !hoveredProductId) return;
+      openInspector(getSku(hoveredProductId), 0);
+      hoverTip.hide();
+    };
+    document.addEventListener('keydown', onInspectKey);
+    return () => {
+      movementKeys.dispose();
+      exploreDrag.dispose();
+      exploreDpad.dispose();
+      document.removeEventListener('keydown', onInspectKey);
+    };
+  }
+
+  const npcGreeting = (/** @type {string} */ id) => {
+    const name = store.get().visitorName;
+    const who = npcName(id).nameNp;
+    return name ? `${who}: नमस्ते ${name}! के चाहियो?` : `${who}: नमस्ते! के चाहियो?`;
+  };
+
   canvas.addEventListener('click', (event) => {
     if (!guard.wasClick(/** @type {PointerEvent} */ (event))) return;
-    if (store.get().mode !== 'explore') return;
+    if (store.get().mode !== 'explore' || inspector) return;
+    const hit = pickAt(event.clientX, event.clientY);
+    if (!hit) return;
+    if (hit.type === 'npc') {
+      createToast(body, npcGreeting(hit.id));
+      return;
+    }
+    stopTour();
+    hoverTip.hide();
+    openInspector(getSku(hit.id), 0);
   });
 
   const applyDirection = (/** @type {import('./ui/dpad.js').Direction} */ direction) => {
@@ -348,6 +568,14 @@ function boot() {
     closeInspector();
     if (bill) bill.dispose();
     if (postChain) postChain.dispose();
+    if (disposeExploreControls) disposeExploreControls();
+    hoverTip.dispose();
+    presetBar.dispose();
+    products.dispose();
+    npcs.dispose();
+    scene.remove(highlight);
+    highlight.dispose();
+    canvas.removeEventListener('pointermove', onPointerMove);
   };
   window.addEventListener('pagehide', releaseControls, { once: true });
 
@@ -377,7 +605,15 @@ function boot() {
     if (!Number.isFinite(fixedDelta)) return;
     rig.update(fixedDelta);
     if (store.get().mode === 'transition' && rig.getMode() === 'settled') {
+      rig.render();
       store.set({ mode: 'explore' });
+      resyncPlayerFromCamera();
+      pointerDirty = true;
+    }
+    if (player && store.get().mode === 'explore') {
+      player.update(fixedDelta);
+      const next = tour.update(fixedDelta, rig.getMode() === 'settled');
+      if (next) beginFlight(next);
     }
   }
 
@@ -385,8 +621,20 @@ function boot() {
   function render(timeMs) {
     culture.update(timeMs / 1000);
     atmosphere.update(timeMs / 1000);
-    rig.render();
+    npcs.update(timeMs / 1000);
+    if (player && store.get().mode === 'explore') player.apply(camera);
+    else rig.render();
     if (rig.getMode() !== 'orbit') publishCamera();
+    if (store.get().mode === 'explore') {
+      if (pointerDirty) {
+        pointerDirty = false;
+        applyHover();
+      } else if (hoverTip.isVisible()) {
+        hoverTip.move(pointerClient.x, pointerClient.y);
+      }
+    } else if (hoverTip.isVisible()) {
+      clearHover();
+    }
     if (postChain) postChain.render();
     else renderer.render(scene, camera);
   }
