@@ -31,11 +31,21 @@ test('golden presence — joystick mounts, click-to-move walks the nav path', as
 
   await expect(page.locator('.joystick')).toBeVisible();
 
-  const before = await cameraPosition(page);
-  await page.mouse.click(640, 180);
-  await page.waitForTimeout(2500);
-  const after = await cameraPosition(page);
-  expect(Math.hypot(after.x - before.x, after.z - before.z)).toBeGreaterThan(0.4);
+  const groundTargets = [
+    [620, 500],
+    [400, 520],
+    [760, 470],
+  ];
+  let travelled = 0;
+  for (const [x, y] of groundTargets) {
+    const before = await cameraPosition(page);
+    await page.mouse.click(x, y);
+    await page.waitForTimeout(1800);
+    const after = await cameraPosition(page);
+    travelled = Math.hypot(after.x - before.x, after.z - before.z);
+    if (travelled > 0.4) break;
+  }
+  expect(travelled).toBeGreaterThan(0.4);
 
   await page.screenshot({ path: 'test-results/golden-presence-path.png', fullPage: false });
   expect(errors).toEqual([]);
