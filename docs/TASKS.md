@@ -92,3 +92,36 @@ Each task has an owner-ready scope, files touched, and **acceptance criteria (AC
 - A stale SW swap announces itself (toast) instead of silently continuing → **controllerchange-once contract asserted**. ✅
 - Worst interaction latency is measured with the 200 ms budget available to CI → **`INP_BUDGET_MS` constant + monitor unit-tested**. ✅
 - Client errors land in a bounded, drainable queue with no network writes → **telemetry contract asserted**. ✅
+
+---
+
+# Next Milestones — M6–M9 (planned 2026-11-28)
+
+Design input: **`docs/RETAIL-DESIGN.md`** (web-researched shelf merchandising, fixture styles, reticle, touch, label art). Sequencing per `AGENTS.md` rule 6: commerce/inventory truth first, interaction second, visual layers last.
+
+## M6 — Shelf & Merchandising Truth (✅ done 2026-11-28 — PR #15, as-built in `docs/M6-EXECUTION-PLAN.md` §10)
+**Shipped:** pure planogram (`shelfPlanogram.js`: across 2 at stock ≥ 25, depth rows at ≥ 30, Back Rack only, hero-first slot order); 3-tier gondola furniture (boards + lips + uprights merged, one mesh); Back Rack re-tiered (gungdi-ghee bottom, nun/sakkhar/musuro eye, besaar/khorsani/masyaura top) at z − 3.75; stock-truthful depletion — only **pouch/box/bundle** carry extra instanced facings (3 InstancedMesh, capacity precomputed), zone mesh rebuilds on 0-crossing; shelf-edge price rails — 2048×128 atlas (Devanagari + `formatRupees`, 'सकियो' sold-out stamp), one merged mesh, FontFace-load redraw; pick proxies widen to the facing row.
+**Measured:** 74 → **83 draw calls** DPR-1 steady state (budget 88 doc-first in this PR), payload unchanged, tsc clean, vitest 362/362, 21/21 goldens incl. new `tests/golden/merchandising.spec.js`; stocked-rack + sell-out screenshots vision-reviewed.
+
+## M7 — Fixture Styles: Traditional / Modern / Mini Super-Mart (planned, doc-first budget raise)
+**Scope:** `FIXTURE_STYLES` token record (colors, laminate vs wood, rail hue, light temperature) beside `world/theme.js`; three authored fixture sets — Traditional (current), Modern (white gondola + LED shelf lips + digital rails), Mini Super-Mart (double-sided aisle gondolas, end caps, dump-bin chatti, entrance basket stack, ceiling fixture grid) — all through `world/merge.js` `mergedParts`; style switch is one store flag; recommended default = traditional shell + super-mart interior (authentic Kathmandu read). **Doc-change-first:** budget raise 80 → 96 must land in `docs/GUIDELINES.md` + `tests/golden/perf.spec.js` in the same PR, re-measured on the device matrix.
+**AC:**
+- Each fixture set ≤ its documented draw-call allowance; style swap touches no commerce/UI code.
+- Deterministic geometry (seeded), no obstacle overlaps; facings from M6 re-plan correctly per style.
+- **Golden:** three style screenshots from the same camera pose, vision-reviewed side by side.
+
+## M8 — Aim-Dot Reticle & Mobile Touch UX (planned)
+**Scope:** `ui/reticle.js` — center-screen aim dot (explore mode only, hidden on landing/overview, ring on product hit, no pulse under reduced motion); raycast source switch by mode (pointer ray on mouse-over vs camera-center ray when look-driven/touch); hover tooltip re-anchors to the reticle on ray hits; tap-to-inspect on coarse pointers (tap shelf = nav-grid walk-to + inspector on arrival); hover tooltip becomes a bottom sheet on touch (≥ 56 px close target); pinch-zoom in landing/overview orbit; haptic tick on add-to-jhola/checkout (`navigator.vibrate`, fail-soft); 56 px touch-target audit across preset bar/chips/drawer.
+**AC:**
+- Reticle never intercepts canvas pointers; hidden per mode; zero per-frame allocation (reused raycaster/Vector2).
+- Tap-inspect golden under touch emulation passes (tap → walk-to → inspector opens on arrival).
+- Pinch-zoom clamps inside existing d-pad radius limits (shared constants).
+- **Golden:** reticle-hover screenshot + touch tap-inspect + pinch spec green.
+
+## M9 — Label Atlas & Catalog v2 (planned)
+**Scope:** `world/labels.js` — per-SKU procedural packaging painter (inspired-by color language + Devanagari display text; **no trademark logos or exact brand artwork**), one 2048² `SRGBColorSpace` atlas, front-face UV decals on facings (§1.3 of RETAIL-DESIGN), bevel + gloss band on pouch/bar/box; 96² thumbnails from the same painter for 3D↔UI parity; catalog v2 price/variant refresh from researched Nepali retail sources (merokirana, aafnaipasal, nubrimart — see RETAIL-DESIGN §5), keeping the four pinned anchor prices or re-anchoring explicitly in `docs/CATALOG.md`.
+**AC:**
+- Label atlas deterministic, anisotropy ≤ 8, +≤ 2 draw calls; no runtime network fetches.
+- Thumbnails and 3D front faces render from the same painter (parity unit test).
+- Catalog v2 table committed with sources cited; pricing unit tests updated in the same PR.
+- **Golden:** close-up shelf screenshot — packaging faces legible, light-correct.
