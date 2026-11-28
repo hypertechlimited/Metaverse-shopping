@@ -18,6 +18,9 @@ Everything in `src/commerce/` and `engine/collision.js` must be pure and 100% de
 - **cart:** add/increment/remove, oversell guard at exact-stock boundary, atomic checkout (full apply or full reject), restore from storage snapshot.
 - **collision:** resolve vs. each of the 5 AABBs from all 4 approach directions, corner cases, world clamps.
 - **storage:** corrupt JSON, missing keys, quota error → defaults, no throw.
+- **INP (`engine/inp.js`, M5.5):** worst-interaction latency from Event Timing entries, degradation to worst-event latency without `interactionId` support, malformed-duration handling (counted, never measured), `INP_BUDGET_MS 200` / `INP_CI_STALL_GUARD_MS 500` budget pins.
+- **telemetry (`engine/telemetry.js`, M5.5):** bounded 50-entry error/rejection queue, install/uninstall idempotence, `drain()` empties, no network writes.
+- **PWA (`engine/pwa.js` + `sw.js` + `manifest.webmanifest`, M5.5):** registration fail-soft paths (no SW API, insecure context, rejection), controllerchange announced exactly once, and cross-file sync of manifest ↔ index.html links ↔ SW shell list.
 
 Gate: `npx vitest run` green, no skipped tests.
 
@@ -52,12 +55,15 @@ Named, screenshot-based acceptance tests — one per milestone, catalogued in `d
 
 ### Android smoke checklist (manual, `?debug=1`)
 
-1. Load `?debug=1` → HUD bottom-left shows FPS / CALLS / TRIS / DPR.
-2. Enter, walk the full shop loop with the joystick → HUD stays ≤ 80 calls; note steady FPS.
+1. Load `?debug=1` → HUD bottom-left shows FPS / CALLS / TRIS / DPR / INP / ERR.
+2. Enter, walk the full shop loop with the joystick → HUD stays ≤ 80 calls, INP < 200 ms; note steady FPS.
 3. Cycle all 7 presets including Dusk → calls stay at 74; mood flips day → dusk → day.
 4. Background then foreground the tab (context loss) → scene restores, HUD recovers.
 5. Add to jhola → checkout → bill renders and prints correctly.
+6. Install to home screen (browser install prompt) → launches standalone with theme color + icon.
+7. Airplane-mode reload of the installed app → shell boots from cache; ERR row stays 0.
+8. After a redeploy, relaunch → update toast appears once; reload lands the new version.
 
 ## CI Workflow (M5)
 
-On every PR: `tsc --noEmit` → `vitest run` → `playwright test` (chromium, DPR 1). Green required before merge. Screenshots attached to the run as artifacts for review.
+On every PR: `tsc --noEmit` → `vitest run` → `playwright test` (chromium, DPR 1). Green required before merge. Screenshots attached to the run as artifacts for review. Since M5.5 the unit gate also covers the PWA/INP/telemetry contracts above; SW behavior on real devices is verified by the manual smoke checklist (Chromium's SW semantics in SwiftShader CI are not representative).
